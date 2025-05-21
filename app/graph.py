@@ -1,34 +1,26 @@
-import os
-from langgraph.graph import StateGraph, END
-from langchain.chat_models import ChatOpenAI
-from langchain.schema import SystemMessage, HumanMessage
-from dotenv import load_dotenv
-
-load_dotenv()
+from typing import TypedDict, List
+from langgraph.graph import StateGraph
+from langchain_openai import ChatOpenAI
+from langchain_core.runnables import RunnableLambda
+from langchain_core.messages import BaseMessage
 
 
-# 定義狀態
-class State(dict):
-    pass
+# 定義 state 結構
+class GraphState(TypedDict):
+    messages: List[BaseMessage]
 
 
-# 定義節點函數
-def generate_response(state: State) -> State:
-    user_input = state.get("user_input", "")
-    llm = ChatOpenAI(model_name="gpt-4", temperature=0.7)
-    messages = [
-        SystemMessage(content="你是一個有幫助的助理。"),
-        HumanMessage(content=user_input),
-    ]
-    response = llm(messages)
-    state["response"] = response.content
-    return state
-
-
-# 建立圖形
 def create_graph():
-    workflow = StateGraph(State)
-    workflow.add_node("generate_response", generate_response)
-    workflow.set_entry_point("generate_response")
-    workflow.set_finish_point("generate_response")
+    model = ChatOpenAI(model="gpt-4o-mini", streaming=True)
+
+    def call_model(state: GraphState) -> GraphState:
+        response = model.invoke(state["messages"])
+        return {"messages": state["messages"] + [response]}
+
+    # 定義 workflow
+    workflow = StateGraph(GraphState)  # 👈 這裡加入 state_schema
+    workflow.add_node("llm", RunnableLambda(call_model))
+    workflow.set_entry_point("llm")
+    workflow.set_finish_point("llm")
+
     return workflow.compile()

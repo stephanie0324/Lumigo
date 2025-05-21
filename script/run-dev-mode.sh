@@ -3,7 +3,7 @@ cd ${PRJ_DIR}
 
 # export $(grep -v '^#' ../../deploy/.env | xargs)
 set -a  # 讓 source 自動 export 變數
-source ../../deploy/.env
+source deploy/.env
 set +a  # 停止自動 export
 
 REQUESTS_CA_BUNDLE=${REQUESTS_CA_BUNDLE:-/etc/ssl/certs/ca-certificates.crt}

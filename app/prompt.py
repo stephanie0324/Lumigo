@@ -1,32 +1,14 @@
-RAG_GEN_PROMPT = """
-You need to answer the questions and categorize their intent and subject category.
+SUMMARY_PROMPT = """
+You are a helpful assistant.
+If the document is short, summarize it in 1 concise sentence.
+If it contains multiple key ideas, list them clearly using bullet points.
+Avoid using phrases like "The document is about." Focus only on the core content.
+"""
 
-Do not return a list; after reading the list, organize the content to respond to the question.
+REFERENCE_PROMPT = """
+You are a helpful assistant. Answer the user's question in a detailed and informative way based only on the provided reference documents.
+Ensure the response is complete and well-structured, covering all relevant aspects found in the references.
+If the answer cannot be found in the references, clearly say so.
 
-Do not add extra words—this is the only format allowed.
-
-# Context Utilization
-- Search the provided context for the most relevant information to answer the question.
-- Return the matching FAQ index ID. If no suitable match is found, return `None`.
-- Use all relevant 'answers' from the context to generate a natural, conversational, and diverse response.
-
-# Answering Guidelines
-- Do not repeat the question in your response.  
-- Ensure the answer is complete, positive, and informative.  
-- Avoid lists and unnecessary details for better readability.  
-- Keep the response engaging, yet concise.  
-- Add in some emojis, and line break ("<br>")
-- Use markdown format, and highlight(``) the important inforations such as due dates or important documents or alert
-
-# Category Options
-{context}
-
-# Current Interaction
-Current question: {question}  
-Please respond in: {language}  
-
-# Final Output Example
-
-{{"id": the most appropriate FAQ index_id, "response": "Your generated answer here."}}
-
+When possible, end your response with a thoughtful follow-up question to encourage deeper exploration or continued conversation.
 """

@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     MODEL_LIST_VISIABLE: bool = True
     RAG_REDOUCE_BELOW_LIMIT_TOKEN: int = 7500
 
+    MONGODB_URI: str = ""
+    MONGODB_NAME: str = "publications_db"
+    COLLECTION: str = "vectors"
+    INDEX_NAME: str = "vector_index"
+
     OPENAI_API_KEY: str = "EMPTY"
 
     # Model Setting
@@ -59,18 +64,16 @@ class Settings(BaseSettings):
         return v
 
     # Retriever Setting
-    RETRIEVAL_DOC_VISIABLE: bool = True
-    RETRIEVER_RETURN_TOP_N: int = 5
 
     # LLM RAG File Path
-    RAG_FILES_FILEPATH: str = "./data/"
-    RAG_INDEX_PREFIX: ClassVar[str] = f"uniApply_rag"
+    RAG_FILES_FILEPATH: str = "./data/project_1_publications.json"
+    RAG_INDEX_PREFIX: ClassVar[str] = f"knowbot"
 
     GPU_DEVICE: str = "cuda:0"
     EMBEDDING_MODEL_NAME: str = "ibm-granite/granite-embedding-125m-english"
     RAG_INDEX_HF_EMBEDDING_MODEL_CONFIG: dict = {
         "model_name": "ibm-granite/granite-embedding-125m-english",
-        "model_kwargs": {"device": "cuda:0"},
+        "model_kwargs": {"device": "cuda:2"},
         "encode_kwargs": {"normalize_embeddings": True},
     }
 
@@ -86,10 +89,10 @@ class Settings(BaseSettings):
         print(v)
         return v
 
-    DEMO_WEB_PAGE_TITLE: str = "Uni Apply (.◜◡◝)"
-    DEMO_WEB_TITLE: str = "Uni Apply (.◜◡◝)"
+    DEMO_WEB_PAGE_TITLE: str = "KnowBot (.◜◡◝)"
+    DEMO_WEB_TITLE: str = "KnowBot (.◜◡◝)"
     DEMO_WEB_DESCRIPTION: str = (
-        """<ul><li>Please wnter any question regarding Univ. apply and press Enter🏃. Wait for the response🎉</li></<ul>"""
+        """<ul><li>What would you like to search today?</li></<ul>"""
     )
 
     BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []

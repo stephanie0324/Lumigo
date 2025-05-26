@@ -1,3 +1,5 @@
+# KnowBot Refactored: Multi-Zone Layout with Saved, Reference, and Search Result Zones
+
 import streamlit as st
 from langchain_core.messages import HumanMessage, SystemMessage
 from graph import create_graph
@@ -7,10 +9,11 @@ from prompt import SUMMARY_PROMPT, REFERENCE_PROMPT
 # Init LangGraph
 graph = create_graph()
 
+# --- Streamlit Page Config ---
 st.set_page_config(page_title="KnowBot", page_icon="🤖", layout="wide")
 st.title("🤖 KnowBot")
 
-# --- Custom CSS for scrollable preview box ---
+# --- Custom CSS ---
 st.markdown(
     """
     <style>
@@ -24,7 +27,7 @@ st.markdown(
         white-space: pre-wrap;
     }
     </style>
-""",
+    """,
     unsafe_allow_html=True,
 )
 
@@ -33,8 +36,9 @@ st.sidebar.header("How to use KnowBot")
 st.sidebar.markdown(
     """
 1. Enter a question below.  
-2. (Optional) Add reference documents.  
-3. KnowBot will answer using selected or most relevant documents.
+2. Search or add documents to Saved Articles.  
+3. Add references from Saved Articles.  
+4. Ask questions using selected references.
 """
 )
 if st.sidebar.button("🔄 Update Vector DB"):
@@ -42,9 +46,10 @@ if st.sidebar.button("🔄 Update Vector DB"):
     st.sidebar.success("Database update complete ✅")
 
 
-# --- Session State Initialization ---
+# --- Session State ---
 def init_state():
     defaults = {
+        "saved_docs": [],
         "reference_docs": [],
         "related_docs": [],
         "query": "",
@@ -53,9 +58,9 @@ def init_state():
         "answer": "",
         "user_input": "",
     }
-    for key, default in defaults.items():
+    for key, value in defaults.items():
         if key not in st.session_state:
-            st.session_state[key] = default
+            st.session_state[key] = value
 
 
 init_state()
@@ -84,52 +89,33 @@ def summarize_document(doc_content):
     return summary.strip()
 
 
-# --- Main layout ---
+# --- Layout ---
 main_col, preview_col = st.columns([2, 1])
 
 with main_col:
-    # Input Area
+    # --- Input ---
     st.markdown("### 💬 Ask KnowBot")
     input_col, btn_col = st.columns([10, 1])
     with input_col:
         st.text_input(
             "",
             key="user_input",
-            placeholder="e.g. How does KnowBot work?",
+            placeholder="e.g. What is LLM orchestration?",
             label_visibility="collapsed",
         )
     with btn_col:
-        st.button(
-            "Send" if st.session_state.reference_docs else "Search",
-            on_click=submit_query,
-        )
+        st.button("Send", on_click=submit_query)
 
-    # Reference Document List
-    st.markdown("#### 📚 Reference Documents")
-    if st.session_state.reference_docs:
-        for idx, doc in enumerate(st.session_state.reference_docs):
-            col1, col2 = st.columns([9, 1])
-            with col1:
-                if st.button(doc["title"], key=f"preview_ref_{idx}"):
-                    st.session_state.selected_doc_idx = idx
-            with col2:
-                if st.button("❌", key=f"remove_ref_{idx}"):
-                    st.session_state.reference_docs.pop(idx)
-                    st.experimental_rerun()
-    else:
-        st.info("No reference documents selected.")
-
-    # --- Query Handling ---
+    # --- Search ---
     if st.session_state.submitted and st.session_state.query:
         query = st.session_state.query
         st.session_state.submitted = False
 
-        with st.spinner(
-            "Thinking..." if st.session_state.reference_docs else "Searching docs..."
-        ):
+        with st.spinner("Searching and analyzing documents..."):
             if st.session_state.reference_docs:
-                docs = st.session_state.reference_docs
-                ref_text = "\n\n".join([d.get("content", "") for d in docs])
+                ref_text = "\n\n".join(
+                    [doc["content"] for doc in st.session_state.reference_docs]
+                )
                 messages = [
                     SystemMessage(content=REFERENCE_PROMPT),
                     HumanMessage(
@@ -153,7 +139,7 @@ with main_col:
                         doc["summary"] = summarize_document(doc.get("content", ""))
                 st.session_state.related_docs = docs
 
-    # --- Answer Output ---
+    # --- Answer ---
     if st.session_state.answer:
         st.markdown("### ✅ Answer")
         st.write(st.session_state.answer)
@@ -161,36 +147,78 @@ with main_col:
             "📋 Copy Answer", st.session_state.answer, file_name="answer.txt"
         )
 
-    # --- Related Documents ---
+    # --- Search Results ---
     if st.session_state.related_docs:
         st.markdown("### 🔍 Search Results")
         for idx, doc in enumerate(st.session_state.related_docs):
             row = st.columns([1, 10, 1])
             with row[0]:
-                if doc not in st.session_state.reference_docs:
-                    if st.button("➕", key=f"add_ref_{idx}"):
-                        st.session_state.reference_docs.append(doc)
-                        st.experimental_rerun()
+                if st.button("➕", key=f"add_saved_{idx}"):
+                    if doc not in st.session_state.saved_docs:
+                        st.session_state.saved_docs.append(doc)
             with row[1]:
                 with st.expander(
                     f"{idx+1}. {doc.get('title', 'No Title')}", expanded=False
                 ):
                     st.write("**Summary:**")
                     st.write(doc.get("summary", "No summary"))
-                    if st.button("🔍 View Full", key=f"view_full_{idx}"):
+                    if st.button("🔍 View Full", key=f"view_full_related_{idx}"):
                         st.session_state.selected_doc_idx = idx
-                        st.experimental_rerun()
+            with row[2]:
+                if st.button("⭐", key=f"add_ref_direct_{idx}"):
+                    if doc not in st.session_state.reference_docs:
+                        st.session_state.reference_docs.append(doc)
 
+    # --- Saved Articles ---
+    if st.session_state.saved_docs:
+        st.markdown("### 📁 Saved Articles")
+        for idx, doc in enumerate(st.session_state.saved_docs):
+            row = st.columns([1, 9, 1, 1])
+            with row[0]:
+                if st.button("⭐", key=f"add_ref_from_saved_{idx}"):
+                    if doc not in st.session_state.reference_docs:
+                        st.session_state.reference_docs.append(doc)
+            with row[1]:
+                st.markdown(doc.get("title", "No Title"))
+            with row[2]:
+                if st.button("🔍", key=f"view_full_saved_{idx}"):
+                    st.session_state.selected_doc_idx = (
+                        len(st.session_state.reference_docs) + idx
+                    )
+            with row[3]:
+                if st.button("❌", key=f"remove_saved_{idx}"):
+                    st.session_state.saved_docs.pop(idx)
+                    st.experimental_rerun()
+
+    # --- Reference Docs ---
+    if st.session_state.reference_docs:
+        st.markdown("### 📚 Reference Documents")
+        for idx, doc in enumerate(st.session_state.reference_docs):
+            row = st.columns([9, 1])
+            with row[0]:
+                if st.button(doc["title"], key=f"preview_ref_{idx}"):
+                    st.session_state.selected_doc_idx = idx
+            with row[1]:
+                if st.button("❌", key=f"remove_ref_{idx}"):
+                    st.session_state.reference_docs.pop(idx)
+                    st.experimental_rerun()
+    else:
+        st.info("No reference documents selected.")
+
+# --- Preview Pane ---
 with preview_col:
     st.markdown("### 📖 Document Preview")
-    idx = st.session_state.get("selected_doc_idx")
-    doc_list = st.session_state.reference_docs + st.session_state.related_docs
-    if idx is not None and 0 <= idx < len(doc_list):
-        doc = doc_list[idx]
+    idx = st.session_state.selected_doc_idx
+    all_docs = (
+        st.session_state.reference_docs
+        + st.session_state.saved_docs
+        + st.session_state.related_docs
+    )
+    if idx is not None and 0 <= idx < len(all_docs):
+        doc = all_docs[idx]
         st.markdown(f"**{doc.get('title', 'No Title')}**")
         st.markdown("---")
-        content = doc.get("content", "No content.")
-        html_content = content.replace("\n", "<br>")
+        html_content = doc.get("content", "No content.").replace("\n", "<br>")
         st.markdown(
             f'<div class="scroll-box">{html_content}</div>', unsafe_allow_html=True
         )

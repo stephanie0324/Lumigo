@@ -20,3 +20,13 @@ def get_text_embedding(text: str) -> list[float]:
         list[float]: Embedding vector.
     """
     return _embedding_model.embed_query(text)
+
+
+def format_docs_for_prompt(docs):
+    formatted = []
+    for i, doc in enumerate(docs):
+        title = doc.get("title", "No Title")
+        content = doc.get("content", "No content.")
+        doc_text = f"[Doc {i+1}] Title: {title}\nContent:\n{content}\n\n---"
+        formatted.append(doc_text)
+    return "\n".join(formatted)

@@ -173,3 +173,4 @@ cython_debug/
 .pypirc
 
 app/index_data/*
+deploy/dev/.env

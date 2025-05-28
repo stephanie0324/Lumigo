@@ -25,10 +25,11 @@ build-job:
   script:
     - echo "==> Starting BUILD stage"
     - bash script/build-docker-image.sh
+  only: main
 
-deploy-job:
-  stage: deploy
-  script:
-    - echo "==> Starting DEPLOY stage"
-    - docker-compose down
-    - docker-compose up -d --build
+# deploy-job:
+#   stage: deploy
+#   script:
+#     - echo "==> Starting DEPLOY stage"
+#     - docker-compose down
+#     - docker-compose up -d --build

@@ -25,7 +25,8 @@ build-job:
   script:
     - echo "==> Starting BUILD stage"
     - bash script/build-docker-image.sh
-  only: main
+  only:
+    - main
 
 # deploy-job:
 #   stage: deploy

@@ -32,9 +32,9 @@ build-job:
 
 deploy-job:
   stage: deploy
-  tags:
-    - docker
   script:
     - echo "==> Starting DEPLOY stage"
     - docker-compose down
     - docker-compose up -d --build
+  only:
+    - main

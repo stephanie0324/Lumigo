@@ -69,11 +69,11 @@ class Settings(BaseSettings):
     RAG_FILES_FILEPATH: str = "./data/project_1_publications.json"
     RAG_INDEX_PREFIX: ClassVar[str] = f"knowbot"
 
-    GPU_DEVICE: str = "cuda:0"
+    DEVICE: str = "cpu"
     EMBEDDING_MODEL_NAME: str = "ibm-granite/granite-embedding-125m-english"
     RAG_INDEX_HF_EMBEDDING_MODEL_CONFIG: dict = {
         "model_name": "ibm-granite/granite-embedding-125m-english",
-        "model_kwargs": {"device": "cuda:2"},
+        "model_kwargs": {"device": "cpu"},
         "encode_kwargs": {"normalize_embeddings": True},
     }
 
@@ -85,7 +85,7 @@ class Settings(BaseSettings):
     ) -> dict:
         for key, val in v.items():
             v["model_name"] = values["EMBEDDING_MODEL_NAME"]
-            v["model_kwargs"]["device"] = values["GPU_DEVICE"]
+            v["model_kwargs"]["device"] = values["DEVICE"]
         print(v)
         return v
 

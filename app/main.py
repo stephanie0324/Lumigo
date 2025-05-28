@@ -64,8 +64,8 @@ init_state()
 graph = create_graph()
 
 # --- Streamlit Page Config ---
-st.set_page_config(page_title="KnowBot", page_icon="🤖", layout="wide")
-st.title("🤖 KnowBot")
+st.set_page_config(page_title=settings.DEMO_WEB_PAGE_TITLE, page_icon="🤖", layout="wide")
+st.title(settings.DEMO_WEB_PAGE_TITLE)
 
 # --- Sidebar ---
 st.sidebar.header("How to use KnowBot")

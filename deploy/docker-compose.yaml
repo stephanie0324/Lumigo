@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  knowbot:
+    container_name: ${COMPOSE_PROJECT_NAME}
+    image: "stephC/knowbot:${VERSION}"
+    ports:
+      - "${HOST_PORT}:7860"
+    volumes:
+      - "${PRJ_DIR}/app:/app"
+    environment:
+      OPENAI_API_KEY: "${OPENAI_API_KEY}"
+      MONGODB_URI: "${MONGODB_URI}"
+      MONGODB_NAME: "${MONGODB_NAME}"
+      COLLECTION: "${COLLECTION}"
+      INDEX_NAME: "${INDEX_NAME}"
+      DEVICE: "${DEVICE}"
+    entrypoint: bash
+    command: -c "streamlit run main.py --server.port=7860"
+    stdin_open: true
+    tty: true
+    restart: unless-stopped

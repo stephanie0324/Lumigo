@@ -15,21 +15,19 @@
 # https://docs.gitlab.com/development/cicd/templates/
 # This specific template is located at:
 # https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Getting-Started.gitlab-ci.yml
-image: docker:latest
+
 
 stages:
   - build
-  - deploy
 
 build-job:
   stage: build
-  tags:
-    - docker          # 這裡指定 runner 的 tag，讓這個 job 用你的 runner
   script:
-    - echo "==> Starting BUILD stage"
-    - sh script/build-docker-image.sh
+    - echo "This runs directly on local shell"
+    - bash script/build-docker-image.sh
   only:
     - main
+
 
 # deploy-job:
 #   stage: deploy

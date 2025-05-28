@@ -25,6 +25,10 @@ build-job:
   script:
     - echo "This runs directly on local shell"
     - bash script/build-docker-image.sh
+  tags:
+    - docker
+  only:
+    - main
 
 
 # deploy-job:

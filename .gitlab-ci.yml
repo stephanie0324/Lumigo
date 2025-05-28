@@ -17,13 +17,14 @@
 # https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Getting-Started.gitlab-ci.yml
 image: docker:latest
 
-
 stages:
   - build
   - deploy
 
 build-job:
   stage: build
+  tags:
+    - docker          # 這裡指定 runner 的 tag，讓這個 job 用你的 runner
   script:
     - echo "==> Starting BUILD stage"
     - sh script/build-docker-image.sh
@@ -32,6 +33,8 @@ build-job:
 
 # deploy-job:
 #   stage: deploy
+#   tags:
+#     - docker
 #   script:
 #     - echo "==> Starting DEPLOY stage"
 #     - docker-compose down

@@ -2,10 +2,19 @@ PRJ_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"/..
 cd ${PRJ_DIR}
 
 # export $(grep -v '^#' ../../deploy/.env | xargs)
-source "${PRJ_DIR}/deploy/.env"
-
-REQUESTS_CA_BUNDLE=${REQUESTS_CA_BUNDLE:-/etc/ssl/certs/ca-certificates.crt}
-SSL_CERT_FILE=${REQUESTS_CA_BUNDLE:-/etc/ssl/certs/ca-certificates.crt}
+# Load environment variables safely
+ENV_FILE="${PRJ_DIR}/dev/.env"
+if [[ -f "$ENV_FILE" ]]; then
+    # Only source if the file is safe (no '<' or '>' or invalid lines)
+    if grep -q '<\|>' "$ENV_FILE"; then
+        echo "ERROR: Your .env file contains invalid characters like '<' or '>'"
+        exit 1
+    fi
+    source "$ENV_FILE"
+else
+    echo "ERROR: .env file not found at $ENV_FILE"
+    exit 1
+fi
 
 IMAGE_NAME=$(bash script/get-image-name.sh)
 
@@ -16,15 +25,11 @@ docker run \
     --rm \
     -it \
     --entrypoint bash \
-    -e REQUESTS_CA_BUNDLE=${REQUESTS_CA_BUNDLE} \
-    -e SSL_CERT_FILE=${SSL_CERT_FILE} \
     -e OPENAI_API_KEY="${OPENAI_API_KEY}" \
     -e MONGODB_URI="${MONGODB_URI}" \
     -e MONGODB_NAME="${MONGODB_NAME}" \
     -e COLLECTION="${COLLECTION}" \
     -e INDEX_NAME="${INDEX_NAME}" \
-    -e GPU_DEVICE="${GPU_DEVICE}" \
-    -v /etc/ssl/certs:/etc/ssl/certs \
-    --gpus all \
+    -e DEVICE="${DEVICE}" \
     $IMAGE_NAME
 

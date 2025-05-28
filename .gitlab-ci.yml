@@ -19,6 +19,7 @@
 
 stages:
   - build
+  - deploy
 
 build-job:
   stage: build
@@ -29,11 +30,11 @@ build-job:
     - main
 
 
-# deploy-job:
-#   stage: deploy
-#   tags:
-#     - docker
-#   script:
-#     - echo "==> Starting DEPLOY stage"
-#     - docker-compose down
-#     - docker-compose up -d --build
+deploy-job:
+  stage: deploy
+  tags:
+    - docker
+  script:
+    - echo "==> Starting DEPLOY stage"
+    - docker-compose down
+    - docker-compose up -d --build

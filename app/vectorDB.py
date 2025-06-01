@@ -80,8 +80,8 @@ def vector_search(query: str, top_k: int = 5):
             "$vectorSearch": {
                 "queryVector": query_vector,
                 "path": "embedding",
-                "numCandidates": 100,
-                "limit": top_k,
+                "numCandidates": 500,
+                "limit":500,
                 "index": settings.INDEX_NAME,
             }
         },
@@ -96,6 +96,26 @@ def vector_search(query: str, top_k: int = 5):
         },
     ]
 
-    results = list(sync_collection.aggregate(pipeline))
-    logger.info(f"Vector search returned {len(results)} results.")
-    return results
+    raw_results = list(sync_collection.aggregate(pipeline))
+    
+    def deduplicate_by_title(raw_results, top_k=20):
+        """
+        Deduplicate vector search results by title, keeping the highest-score document per title.
+        """
+        title_to_doc = {}
+
+        for doc in raw_results:
+            title = doc["title"]
+            score = doc.get("score", 0)
+
+            if title not in title_to_doc or score > title_to_doc[title].get("score", 0):
+                title_to_doc[title] = doc
+
+        # Sort by score descending and limit to top_k
+        deduped_sorted = sorted(title_to_doc.values(), key=lambda d: d.get("score", 0), reverse=True)
+        return deduped_sorted[:top_k]
+
+    # dedulicate results by title
+    final_results = deduplicate_by_title(raw_results, top_k)
+    logger.debug(f"Vector Searched Docs: {final_results}'")
+    return final_results

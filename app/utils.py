@@ -27,6 +27,6 @@ def format_docs_for_prompt(docs):
     for i, doc in enumerate(docs):
         title = doc.get("title", "No Title")
         content = doc.get("content", "No content.")
-        doc_text = f"[Doc {i+1}] Title: {title}\nContent:\n{content}\n\n---"
+        doc_text = f"[Doc: {i+1}] Title: {title}\nContent:\n{content}\n\n---"
         formatted.append(doc_text)
     return "\n".join(formatted)

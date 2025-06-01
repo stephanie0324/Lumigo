@@ -11,6 +11,8 @@ from prompt import SUMMARY_PROMPT, REFERENCE_PROMPT
 from utils import format_docs_for_prompt
 from config import settings
 
+from logger import logger
+
 ##############################################
 # Functions
 ##############################################
@@ -28,6 +30,7 @@ def init_state():
         "user_input": "",
         "markdown_doc": "",
         "trigger_rerun": False,
+        "used_indices": [],
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -37,7 +40,6 @@ def submit_query():
     if st.session_state.user_input.strip():
         st.session_state.query = st.session_state.user_input.strip()
         st.session_state.submitted = True
-        st.session_state.user_input = ""
 
 
 def summarize_single_doc(doc):
@@ -59,6 +61,22 @@ def extract_used_doc_indices(answer):
     matches = re.findall(r"\[(\d+)\]", answer)
     indices = {int(m) - 1 for m in matches if m.isdigit()}
     return indices
+
+def split_answer_followups(raw_answer):
+    pattern = r"\n^#{1,6}\s*💡.*$"
+    parts = re.split(pattern, raw_answer, flags=re.MULTILINE)
+    
+    if len(parts) == 2:
+        trimmed_answer = parts[0].strip()
+        followup_text = parts[1].strip()
+    else:
+        trimmed_answer = raw_answer.strip()
+        followup_text = ""
+    return trimmed_answer, followup_text
+
+def extract_followups(response: str):
+    return re.findall(r"> #### (.+)", response)
+
 
 ##############################################
 # Main
@@ -99,14 +117,17 @@ with main_col:
     st.markdown("### 💬 Ask KnowBot")
     input_col, btn_col = st.columns([10, 1])
     with input_col:
-        st.text_input(
+        user_input = st.text_input(
             "User Input",
             key="user_input",
             placeholder="e.g. What is LLM orchestration?",
             label_visibility="collapsed",
         )
+
     with btn_col:
-        st.button("Send", on_click=submit_query)
+        if st.button("Send"):
+            st.session_state.query = user_input
+            st.session_state.submitted = True
 
     # --- Search ---
     if st.session_state.submitted and st.session_state.query:
@@ -126,22 +147,23 @@ with main_col:
         else:
             docs = st.session_state.reference_docs
 
-        # 預先摘要處理
-        with st.spinner("Summarizing documents..."):
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future_summaries = {
-                    executor.submit(summarize_single_doc, doc): doc for doc in docs
-                }
-                for future in concurrent.futures.as_completed(future_summaries):
-                    doc = future_summaries[future]
-                    try:
-                        doc["summary"] = future.result()
-                    except Exception as e:
-                        doc["summary"] = f"Failed to summarize: {e}"
+        # # 預先摘要處理
+        # with st.spinner("Summarizing documents..."):
+        #     with concurrent.futures.ThreadPoolExecutor() as executor:
+        #         future_summaries = {
+        #             executor.submit(summarize_single_doc, doc): doc for doc in docs
+        #         }
+        #         for future in concurrent.futures.as_completed(future_summaries):
+        #             doc = future_summaries[future]
+        #             try:
+        #                 doc["summary"] = future.result()
+        #             except Exception as e:
+        #                 doc["summary"] = f"Failed to summarize: {e}"
 
         # 生成回答
         with st.spinner("Generating Answer with Documents..."):
             formatted_docs = format_docs_for_prompt(st.session_state.related_docs)
+            logger.debug(f"Formatted Docs:\n{formatted_docs}")
             messages = [
                 SystemMessage(content=REFERENCE_PROMPT),
                 HumanMessage(
@@ -156,9 +178,22 @@ with main_col:
                 if msgs and hasattr(msgs[-1], "content"):
                     answer += msgs[-1].content
 
-            st.session_state.answer = "\n".join(answer.strip().split("\n"))
-    used_indices = extract_used_doc_indices(st.session_state.answer)
-    st.markdown(st.session_state.answer or "No answer generated yet.")
+            raw_answer = "\n".join(answer.strip().split("\n"))
+            trimmed_answer, followup_text = split_answer_followups(raw_answer)
+            st.markdown("#### 🤖 Answer")
+            st.markdown(trimmed_answer)
+            st.session_state.answer = trimmed_answer
+            
+        used_indices = extract_used_doc_indices(trimmed_answer)
+        st.session_state.used_indices = list(used_indices)
+        follow_ups =  extract_followups(followup_text)
+        
+        st.markdown("### 💡 Explore Further")
+        for i, question in enumerate(follow_ups):
+            if st.button(question, key=f"followup_{i}"):
+                st.session_state["user_input"] = question
+                st.rerun()
+
 
 
 with preview_col:
@@ -181,7 +216,7 @@ with preview_col:
             
     if st.session_state.related_docs:
         st.markdown("### 🔍 Source")
-        for idx in used_indices:
+        for idx in st.session_state.used_indices:
             doc = st.session_state.related_docs[idx]
             row = st.columns([1, 1, 10])
             with row[0]:
@@ -194,7 +229,13 @@ with preview_col:
                     f"{idx+1}. {doc.get('title', 'No Title')}", expanded=False
                 ):
                     st.write("**Summary:**")
-                    st.write(doc.get("summary", "No summary"))
+                    try:
+                        content = doc.get("content", "")
+                        short_content = doc.get("content","")[:501] + "..." if len(content) > 501 else content
+                        st.write(short_content)
+                    except KeyError:    
+                        st.write("No original content available.")
+                    
 
 # --- Unified Rerun Trigger ---
 if st.session_state.get("trigger_rerun", False):

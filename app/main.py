@@ -1,14 +1,14 @@
 # KnowBot Refactored: Multi-Zone Layout with Saved, Reference, and Search Result Zones
 
 import re
-
+import asyncio
+import concurrent.futures
 import streamlit as st
 from langchain_core.messages import HumanMessage, SystemMessage
 from graph import create_graph
-from vectorDB import update_db, vector_search
+from vectorDB import update_db_async, vector_search
 from prompt import SUMMARY_PROMPT, REFERENCE_PROMPT
 from utils import format_docs_for_prompt
-import concurrent.futures
 from config import settings
 
 ##############################################
@@ -83,10 +83,13 @@ st.sidebar.markdown(
 4. Ask questions using selected references.
 """
 )
+
 if st.sidebar.button("🔄 Update Vector DB"):
-    update_db()
-    st.sidebar.success("Database update complete ✅")
-    st.session_state.trigger_rerun = True
+    with st.sidebar:
+        with st.spinner("Updating database..."):
+            asyncio.run(update_db_async())  # ✅ 執行 async 函式
+        st.success("Database update complete ✅")
+        st.session_state.trigger_rerun = True
 
 # --- Layout ---
 main_col, preview_col = st.columns([2, 1])

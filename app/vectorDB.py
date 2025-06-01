@@ -1,85 +1,77 @@
 """
-This module provides a utility function to update a MongoDB vector store
-with preprocessed document embeddings. If the collection already contains data,
-it will skip re-importing.
+This module provides utility functions to update a MongoDB vector store
+with preprocessed document embeddings asynchronously, and to perform
+synchronous vector similarity search using MongoDB's $vectorSearch operator.
 
-It also includes a vector_search function to perform similarity search
-using MongoDB's $vectorSearch operator, intended for RAG workflows.
+It uses two separate MongoDB clients:
+- AsyncIOMotorClient for async operations (e.g., bulk insert)
+- MongoClient for sync operations (e.g., vector search)
 """
 
-import json
+import os
+import asyncio
 from pymongo import MongoClient
-from langchain_community.embeddings import HuggingFaceBgeEmbeddings
+from motor.motor_asyncio import AsyncIOMotorClient
+
 from config import settings
 from logger import logger
+from data_preporocess import load_and_process_pdf_async, load_and_process_json_async
 from utils import get_text_embedding
 
-client = MongoClient(settings.MONGODB_URI)
-db = client[settings.MONGODB_NAME]
-collection = db[settings.COLLECTION]
+
+# 同步 client，用於 vector_search 這類同步查詢
+sync_client = MongoClient(settings.MONGODB_URI)
+sync_db = sync_client[settings.MONGODB_NAME]
+sync_collection = sync_db[settings.COLLECTION]
+
+# 非同步 client，用於資料匯入、清除等非同步操作
+async_client = AsyncIOMotorClient(settings.MONGODB_URI)
+async_db = async_client[settings.MONGODB_NAME]
+async_collection = async_db[settings.COLLECTION]
 
 
-def update_db():
-    """
-    Update MongoDB vector store with embedded documents.
+async def process_file(file_path):
+    if file_path.endswith(".pdf"):
+        return await load_and_process_pdf_async(file_path)
+    elif file_path.endswith(".json"):
+        return await load_and_process_json_async(file_path)
+    else:
+        logger.warning(f"❗ Unsupported file format: {file_path}")
+        return []
 
-    This function checks if the specified MongoDB collection is empty.
-    If it is, it reads a local JSON file (configured via settings), processes
-    each document to generate embeddings using HuggingFaceBgeEmbeddings, and
-    inserts the resulting documents into the MongoDB collection.
 
-    If the collection already contains documents, it logs a message and skips update.
+async def update_db_async():
+    logger.info("🧹 Clearing existing collection asynchronously...")
+    await async_collection.delete_many({})
 
-    Expected document format in JSON:
-    [
-        {
-            "id": "unique_id",
-            "title": "Title of document",
-            "publication_description": "Main content of document"
-        },
-        ...
-    ]
-    """
+    logger.info("📂 Reading source documents asynchronously...")
+    data_folder = settings.RAG_FILES_FILEPATH
 
-    if collection.count_documents({}) > 0:
-        logger.info("MongoDB already contains vector documents. Skipping update.")
-        return
+    tasks = []
+    for file in os.listdir(data_folder):
+        file_path = os.path.join(data_folder, file)
+        tasks.append(process_file(file_path))
 
-    logger.info("No vectors found. Updating and generating embeddings...")
+    all_docs = await asyncio.gather(*tasks)
 
-    with open(settings.RAG_FILES_FILEPATH, "r", encoding="utf-8") as f:
-        articles = json.load(f)
+    for docs, file in zip(all_docs, os.listdir(data_folder)):
+        if docs:
+            await async_collection.insert_many(docs)
+            logger.info(f"✅ Inserted {len(docs)} documents from {file}")
 
-    for article in articles:
-        doc_id = article["id"]
-        title = article.get("title", "")
-        content = article.get("publication_description", "")
-        full_text = f"{title}\n\n{content}"
-
-        embedding = get_text_embedding(full_text)
-
-        document = {
-            "doc_id": doc_id,
-            "title": title,
-            "content": full_text,
-            "embedding": embedding,
-        }
-
-        collection.insert_one(document)
-
-    logger.info("Vector update completed.")
+    logger.info("🎉 Vector DB async update completed.")
 
 
 def vector_search(query: str, top_k: int = 5):
     """
-    Perform a vector similarity search in MongoDB using $vectorSearch.
+    Perform a vector similarity search in MongoDB synchronously using $vectorSearch.
 
     Args:
         query (str): The input query text.
         top_k (int): Number of top similar documents to return.
 
     Returns:
-        List[Dict]: Top matching documents with similarity.
+        List[Dict]: Top matching documents with similarity score.
     """
     query_vector = get_text_embedding(query)
 
@@ -104,6 +96,6 @@ def vector_search(query: str, top_k: int = 5):
         },
     ]
 
-    results = list(collection.aggregate(pipeline))
+    results = list(sync_collection.aggregate(pipeline))
     logger.info(f"Vector search returned {len(results)} results.")
     return results

@@ -66,7 +66,7 @@ class Settings(BaseSettings):
     # Retriever Setting
 
     # LLM RAG File Path
-    RAG_FILES_FILEPATH: str = "./data/project_1_publications.json"
+    RAG_FILES_FILEPATH: str = "./data"
     RAG_INDEX_PREFIX: ClassVar[str] = f"knowbot"
 
     DEVICE: str = "cpu"

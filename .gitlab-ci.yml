@@ -17,6 +17,11 @@
 # https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Getting-Started.gitlab-ci.yml
 
 
+before_script:
+  - echo "PATH: $PATH"
+  - which docker
+  - docker --version
+
 stages:
   - build
   - deploy

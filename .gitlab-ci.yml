@@ -24,10 +24,10 @@ stages:
 build-job:
   stage: build
   before_script:
-    - export PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH
-    - echo "PATH: $PATH"
-    - which docker || echo "docker not found"
-    - docker --version || echo "docker --version failed"
+    - 'export PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH'
+    - 'echo "PATH: $PATH"'
+    - 'which docker || echo "docker not found"'
+    - 'docker --version || echo "docker --version failed"'
   script:
     - echo "This runs directly on local shell"
     - bash script/build-docker-image.sh
@@ -37,11 +37,10 @@ build-job:
 deploy-job:
   stage: deploy
   before_script:
-    - export PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH
-    - echo "==> PATH: $PATH"
-    - which docker || echo "docker not found"
-    - docker --version || echo "docker not available"
-    - docker compose version || echo "docker compose not available"
+    - 'export PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH'
+    - 'echo "PATH: $PATH"'
+    - 'which docker || echo "docker not found"'
+    - 'docker --version || echo "docker --version failed"'
   script:
     - echo "==> Starting DEPLOY stage"
     - docker-compose -f deploy/docker-compose.yaml down

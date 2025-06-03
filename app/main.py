@@ -44,7 +44,7 @@ def submit_query():
 def trigger_question(question):
     st.session_state.user_input = question
     st.session_state.query = question
-    st.session_state.submitted = True   # <== 加上這行
+    st.session_state.submitted = True
     st.session_state.trigger_rerun = True
 
 
@@ -60,7 +60,8 @@ def summarize_single_doc(doc):
     return summary.strip()
 
 def extract_used_doc_indices(answer):
-    return {int(m) - 1 for m in re.findall(r"\[(\d+)\]", answer)}
+    logger.info(f"Extracting used document indices from answer: {answer}")
+    return {int(m) - 1 for m in re.findall(r"\[\^(\d+)\]", answer)}
 
 def split_answer_followups(raw_answer):
     parts = re.split(r"\n^#{1,6}\s*💡.*$", raw_answer, flags=re.MULTILINE)
@@ -119,8 +120,7 @@ with main_col:
         if not st.session_state.reference_docs:
             with st.spinner("Searching and analyzing documents..."):
                 docs = vector_search(query)
-                for i, doc in enumerate(docs):
-                    doc["title"] = doc.get("title") or f"Untitled {i+1}"
+                logger.debug(f"Related documents for query: {docs}")
                 st.session_state.related_docs = docs
         else:
             docs = st.session_state.reference_docs
@@ -142,6 +142,7 @@ with main_col:
             trimmed, followup = split_answer_followups(raw_answer)
             st.session_state.answer = trimmed
             st.session_state.used_indices = list(extract_used_doc_indices(trimmed))
+            logger.info(f"Used document indices: {st.session_state.used_indices}")
             followups = extract_followups(followup)
 
             st.markdown("#### 🤖 Answer")
@@ -185,11 +186,10 @@ with preview_col:
                 if st.button("➕", key=f"add_ref_{idx}"):
                     if doc not in st.session_state.reference_docs:
                         st.session_state.reference_docs.append(doc)
-                        st.session_state.trigger_rerun = True
+                        st.rerun()
             with row[2]:
                 with st.expander(f" [{idx+1}]  {doc.get('title', 'No Title')}"):
                     st.write("**Summary:**")
                     content = doc.get("content", "")
                     preview = content[:500] + "..." if len(content) > 500 else content
                     st.write(preview)
-

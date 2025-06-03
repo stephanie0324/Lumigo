@@ -16,6 +16,7 @@
 # This specific template is located at:
 # https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Getting-Started.gitlab-ci.yml
 
+
 stages:
   - build
   - deploy
@@ -37,12 +38,13 @@ deploy-job:
   stage: deploy
   before_script:
     - export PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH
-    - echo "PATH: $PATH"
+    - echo "==> PATH: $PATH"
     - which docker || echo "docker not found"
-    - docker --version || echo "docker --version failed"
+    - docker --version || echo "docker not available"
+    - docker compose version || echo "docker compose not available"
   script:
     - echo "==> Starting DEPLOY stage"
-    - docker compose -f deploy/docker-compose.yaml down
-    - docker compose -f deploy/docker-compose.yaml up -d
+    - docker-compose -f deploy/docker-compose.yaml down
+    - docker-compose -f deploy/docker-compose.yaml up -d
   only:
     - main

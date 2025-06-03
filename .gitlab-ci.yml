@@ -17,10 +17,6 @@
 # https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Getting-Started.gitlab-ci.yml
 
 
-before_script:
-  - echo "PATH: $PATH"
-  - which docker
-  - docker --version
 
 stages:
   - build
@@ -28,6 +24,11 @@ stages:
 
 build-job:
   stage: build
+  before_script:
+    - export PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH
+    - echo "PATH: $PATH"
+    - which docker || echo "docker not found"
+    - docker --version || echo "docker --version failed"
   script:
     - echo "This runs directly on local shell"
     - bash script/build-docker-image.sh

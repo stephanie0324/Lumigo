@@ -1,6 +1,5 @@
 <a name="readme-top"></a>
 
-
 <h1 align="center"> KnowBot </h1>
 
 <p align="center">
@@ -20,8 +19,6 @@
         <img alt="badge" src="https://img.shields.io/badge/Licence-MIT-lightgreen">
     </a>
 </p>
-
-
 
 <div align="center">
     <img src="" width=160, height=150>
@@ -46,25 +43,57 @@
 </div>
 
 # About the project
-KnowBot is an AI-powered Q&A assistant that transforms your documents—PDFs, Markdown, CSVs—into a searchable knowledge base. Simply upload your data, and KnowBot processes it to answer your questions. Built with LangGraph, LangChain, and Streamlit, it offers an intuitive interface for seamless interaction.
+
+> 🔍 Tech Stack  
+>  Built with Streamlit, LangChain, MongoDB, and Google Vertex AI.
+
+KnowBot is an interactive, intelligent RAG (Retrieval-Augmented Generation) chatbot designed to help users search, explore, and question academic documents with ease. It combines the power of semantic search, natural language understanding, and a user-friendly interface to deliver grounded, explainable answers.
+
+It leverages:
+
+🗃️ MongoDB for document storage and vector search  
+🌐 HuggingFace Embeddings for semantic search  
+🤖 Vertex AI for LLM-based summarization and QA  
+🚀 GitLab for CI/CD, automates testing and deployment.
 
 <div align="center">
-<p class="image-cropper">
-    <img  src = " />
-</p> KnowBot Interface 
+  <p class="image-cropper">
+    <img src="knowbot.gif" alt="KnowBot Interface" width="600"/>
+  </p>
+  <em>KnowBot Interface</em>
 </div>
-<br>
 
-Regarding the RAG, we prepare the data in advance instead of implementing real-time retrieval. Since most application information do not vary much throughout the year, we only have to update the information yearly, therefore there is no need to do realtime search to lower the computation and development cost.   
-The vector-databse we use in this project is created using [FAISS](https://faiss.ai/index.html), it is a library for efficient similarity search and clustering of dense vectors. The embedding and generation model we use is offered by OpenAI GPT-4o-mini and GPT-3.5 for comparison.
+| Area                       | Description                                                                              |
+| -------------------------- | ---------------------------------------------------------------------------------------- |
+| 🔍 **Search Panel**        | Input your question to search for semantically related academic documents.               |
+| 📚 **Source Documents**    | Displays retrieved documents with LLM-generated summaries and buttons like “Add to Ref”. |
+| 📌 **Reference Docs**      | Shows documents that are currently selected as references for answering your question.   |
+| ❓ **Follow-up Questions** | Suggested next questions based on your current query and selected references.            |
 
+### ✨ Key Features
+
+- 📄 Semantic Search  
+ Retrieve documents based on meaning—not just keywords.
 <p align="center">
 <img src="./img/model_structure_explain.gif" alt="drawing" width="400" height="200"/>
-<br> The Implementation of Partial RAG </br>
+<br> The Implementation of RAG </br>
+
+- 🧠 Reference-Based QA  
+   Ask questions using only your selected source documents for grounded, reliable answers.
+- 🧾 LLM-Powered Summaries  
+  Automatically generate concise document overviews using Vertex AI.
+- 🎛️ Intuitive UI  
+  Search, preview, and manage documents through a clean and responsive interface.
+- 💾 Persistent Storag  
+  Save useful papers for future reference and reuse.
+- 🧩 Modular Backen  
+  Built for easy expansion—supports future integrations like PDFs, JSONs, and more.
+- 🤝 Multi-Agent Read
+  Engineered to support planning and coordination via LangGraph.
 
 # New Updates
->　🎉　KnowBot is born on May 21, 2025
 
+> 🎉 　 KnowBot is born on May 21, 2025
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -72,23 +101,31 @@ The vector-databse we use in this project is created using [FAISS](https://faiss
 
 > For data preparing and processing : [read here](README_DataProcess.md)
 
-To deploy the application simply go to `deploy` folder.  
+To deploy the application simply go to `deploy` folder.
+
 1. Modify `.env` file
-    * OPENAI_API_KEY
-    * HOST_PORT
-    
-    (Retrieval Related Settings) 
-    > [!NOTE]
-    > you can change below settings regarding to the documents and language you have prepared
-    * EMBEDDING_MODEL_NAME
-    * RETRIEVER_RETURN_TOP_N
+
+   - OPENAI_API_KEY
+   - HOST_PORT
+   - DEVICE
+
+   (MONGODB related settings)
+
+   - MONGODB_URI
+   - MONGODB_NAME
+   - COLLECTION
+   - INDEX_NAME
+
 2. Build image
-> [!INFO]
-> First build will always take longer to run
+   > [!INFO]
+   > First build will always take longer to run
+
 ```
 bash script/build-docker-image.sh
 ```
+
 3. Start the application
+
 ```
 docker-compose up -d
 ```
@@ -96,6 +133,7 @@ docker-compose up -d
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 <!-- LICENSE -->
+
 # License
 
 Distributed under the MIT License. See `LICENSE.txt` for more information.
@@ -103,12 +141,12 @@ Distributed under the MIT License. See `LICENSE.txt` for more information.
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Other Projects
-* [LLM Projects](https://github.com/stephanie0324/Finetune_LLM)
-* [Web-Scraping](https://github.com/stephanie0324/Web-Scraping-)
-* [Machine Learning with me](https://github.com/stephanie0324/ML_practrice)
+
+- [LLM Projects](https://github.com/stephanie0324/Finetune_LLM)
+- [Web-Scraping](https://github.com/stephanie0324/Web-Scraping-)
+- [Machine Learning with me](https://github.com/stephanie0324/ML_practrice)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
 
 <h3 align="left">Connect with me:</h3>
 <p align="left">

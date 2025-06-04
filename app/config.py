@@ -1,7 +1,6 @@
 from pydantic_settings import BaseSettings
 from pydantic import AnyHttpUrl, validator
 from typing import List, Union, Optional, Pattern, ClassVar, Dict
-from model.model_config import ModelConfig, ModelEntry
 
 
 class Settings(BaseSettings):
@@ -26,47 +25,6 @@ class Settings(BaseSettings):
     PROJECT_ID: str = "project-knowbot-460809"
     LOCATION: str = "us-central1"
 
-    MODEL_CONFIG: ModelConfig = {
-        "GPT-4o-mini": {
-            "type": "ChatOpenAI",
-            "args": {
-                "max_tokens": 512,
-                "temperature": 0,
-                "max_retries": 2,
-                "model_name": "gpt-4o-mini",
-                "api_key": "EMPTY",
-            },
-        },
-        "GPT-3.5": {
-            "type": "ChatOpenAI",
-            "args": {
-                "max_tokens": 512,
-                "temperature": 0,
-                "max_retries": 2,
-                "model_name": "gpt-3.5-turbo-0125",
-                "api_key": "EMPTY",
-            },
-        },
-    }
-
-    @validator("MODEL_CONFIG", pre=True, always=True)
-    def model_config_convert_to_object_and_add_openai_key(
-        cls,
-        # NOTE: 無論是用預設值還是用環境變數帶入，v type都是Dict[str, dict]，而非Dict[str, ModelEntry]
-        v: Dict[str, dict],
-        values,
-    ) -> ModelConfig:
-        for key, model_conf in v.items():
-            # 將dict 轉 ModelEntry obj.
-            if isinstance(model_conf, dict):
-                model_conf = ModelEntry(**model_conf)
-                v[key] = model_conf
-            if model_conf.type == "ChatOpenAI":
-                model_conf.args["api_key"] = values["OPENAI_API_KEY"]
-        print(f"model_config: {v}")
-        return v
-
-    # Retriever Setting
 
     # LLM RAG File Path
     RAG_FILES_FILEPATH: str = "./data"

@@ -1,6 +1,6 @@
 <a name="readme-top"></a>
 
-<h1 align="center"> KnowBot </h1>
+<h1 align="center"> KnowBot: A Q&A Chatbot for Academic Document Exploration </h1>
 
 <p align="center">
     <a href="https://github.com/FlagOpen/FlagEmbedding">
@@ -19,27 +19,29 @@
         <img alt="badge" src="https://img.shields.io/badge/Licence-MIT-lightgreen">
     </a>
 </p>
-
 <div align="center">
-    <img src="" width=160, height=150>
-    <p>
-    This is a Q&A Chatbot built with RAG.
-    <br>  
-    Ask freely and get the most accurate information with link.
-    <br>
-    <h4 align="center">
-    <p>
-        <a href=#about-the-project>About</a> |
-        <a href=#new-updates>News</a> |
-        <a href="#project-lists">Projects</a> |
-        <a href=#getting-started>Getting Started</a> |
-        <a href=#usage>Usage</a> |
-        <a href="#roadmap">Roadmap</a> |
-        <a href="#contributing">Contributing</a> |
-        <a href="#license">License</a> 
-    </p>
-  </h4>
+
+  <p>This is a chatbot built with Retrieval-Augmented Generation (RAG) for in-depth semantic search across research papers and theses.</p>
+
+  <p>Ask freely — KnowBot will return grounded answers with trusted reference documents.</p>
+
+  <p>
+    🌐 <a href="https://607d-123-192-82-141.ngrok-free.app" target="_blank"><strong>Live Demo</strong></a>
   </p>
+
+  <br>
+
+  <h4>
+    <a href="#about-the-project">About</a> |
+    <a href="#new-updates">News</a> |
+    <a href="#project-lists">Projects</a> |
+    <a href="#getting-started">Getting Started</a> |
+    <a href="#usage">Usage</a> |
+    <a href="#roadmap">Roadmap</a> |
+    <a href="#contributing">Contributing</a> |
+    <a href="#license">License</a>
+  </h4>
+
 </div>
 
 # About the project

@@ -13,6 +13,13 @@ services:
       COLLECTION: "${COLLECTION}"
       INDEX_NAME: "${INDEX_NAME}"
       DEVICE: "${DEVICE}"
+      PROJECT_ID: "${PROJECT_ID}"
+      LOCATION: "${LOCATION}"
+      GOOGLE_APPLICATION_CREDENTIALS: "/app/credentials.json"
+
+    volumes:
+      - ./credentials.json:/app/credentials.json:ro
+
     stdin_open: true
     tty: true
     restart: unless-stopped

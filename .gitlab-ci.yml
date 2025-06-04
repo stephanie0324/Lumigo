@@ -47,7 +47,8 @@ deploy-job:
     - ls -l $CI_PROJECT_DIR/deploy/
   script:
     - echo "==> Starting DEPLOY stage"
-    - docker-compose -f deploy/docker-compose.yaml down
-    - docker-compose -f deploy/docker-compose.yaml up -d
+    - cd deploy
+    - docker-compose down
+    - docker-compose up -d
   only:
     - main

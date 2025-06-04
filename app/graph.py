@@ -4,6 +4,8 @@ from langchain_openai import ChatOpenAI
 from langchain_core.runnables import RunnableLambda
 from langchain_core.messages import BaseMessage
 
+from model import llm  # 假設 llm 已經在 model.py 中定義
+
 
 # 定義 state 結構
 class GraphState(TypedDict):
@@ -11,10 +13,9 @@ class GraphState(TypedDict):
 
 
 def create_graph():
-    model = ChatOpenAI(model="gpt-4o-mini", streaming=True)
 
     def call_model(state: GraphState) -> GraphState:
-        response = model.invoke(state["messages"])
+        response = llm.invoke(state["messages"])
         return {"messages": state["messages"] + [response]}
 
     # 定義 workflow

@@ -60,7 +60,6 @@ def summarize_single_doc(doc):
     return summary.strip()
 
 def extract_used_doc_indices(answer):
-    logger.info(f"Extracting used document indices from answer: {answer}")
     return {int(m) - 1 for m in re.findall(r"\[\^(\d+)\]", answer)}
 
 def split_answer_followups(raw_answer):
@@ -142,7 +141,6 @@ with main_col:
             trimmed, followup = split_answer_followups(raw_answer)
             st.session_state.answer = trimmed
             st.session_state.used_indices = list(extract_used_doc_indices(trimmed))
-            logger.info(f"Used document indices: {st.session_state.used_indices}")
             followups = extract_followups(followup)
 
             st.markdown("#### 🤖 Answer")

@@ -33,15 +33,16 @@ build-job:
     - bash script/build-docker-image.sh
   only:
     - main
-
+    
 deploy-job:
   stage: deploy
   before_script:
-    - echo "$GOOGLE_CREDENTIALS_JSON" > "$CI_PROJECT_DIR/credentials.json"
+    - echo "$GOOGLE_CREDENTIALS_JSON" > "$CI_PROJECT_DIR/deploy/credentials.json"
     - 'export PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH'
     - 'echo "PATH: $PATH"'
     - 'which docker || echo "docker not found"'
     - 'docker --version || echo "docker --version failed"'
+    - ls -l $CI_PROJECT_DIR/deploy/
   script:
     - echo "==> Starting DEPLOY stage"
     - docker-compose -f deploy/docker-compose.yaml down

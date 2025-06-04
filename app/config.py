@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = "EMPTY"
 
     # Model Setting
+    PROJECT_ID: str = "project-knowbot-460809"
+    LOCATION: str = "us-central1"
+
     MODEL_CONFIG: ModelConfig = {
         "GPT-4o-mini": {
             "type": "ChatOpenAI",

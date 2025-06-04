@@ -40,7 +40,6 @@ deploy-job:
     GOOGLE_APPLICATION_CREDENTIALS: "$CI_PROJECT_DIR/deploy/credentials.json"
   before_script:
     - echo "$GOOGLE_APPLICATION_CREDENTIALS" > "$CI_PROJECT_DIR/deploy/credentials.json"
-    - cat "$CI_PROJECT_DIR/deploy/credentials.json"
     - 'export PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH'
     - 'echo "PATH: $PATH"'
     - 'which docker || echo "docker not found"'

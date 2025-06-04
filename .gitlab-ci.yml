@@ -37,8 +37,9 @@ build-job:
 deploy-job:
   stage: deploy
   variables:
-    GOOGLE_APPLICATION_CREDENTIALS: "$GOOGLE_APPLICATION_CREDENTIALS"
+    GOOGLE_APPLICATION_CREDENTIALS: "$CI_PROJECT_DIR/google_credentials.json"
   before_script:
+    - echo "$GOOGLE_CREDENTIALS_JSON" > "$CI_PROJECT_DIR/google_credentials.json"
     - 'export PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH'
     - 'echo "PATH: $PATH"'
     - 'which docker || echo "docker not found"'

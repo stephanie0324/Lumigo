@@ -15,8 +15,7 @@
 # https://docs.gitlab.com/development/cicd/templates/
 # This specific template is located at:
 # https://gitlab.com/gitlab-org/gitlab/-/blob/master/lib/gitlab/ci/templates/Getting-Started.gitlab-ci.yml
-variables:
-  GOOGLE_APPLICATION_CREDENTIALS: "$GOOGLE_APPLICATION_CREDENTIALS"
+
 
 stages:
   - build
@@ -37,6 +36,8 @@ build-job:
 
 deploy-job:
   stage: deploy
+  variables:
+    GOOGLE_APPLICATION_CREDENTIALS: "$GOOGLE_APPLICATION_CREDENTIALS"
   before_script:
     - 'export PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH'
     - 'echo "PATH: $PATH"'

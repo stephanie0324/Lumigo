@@ -143,6 +143,10 @@ It leverages:
    streamlit run app.py --server.port=7860
    ```
 
+   > [! Note]
+   > Prod Mode (docker compose): the credential.json should be in the `deploy/` folder
+   > Dev Mode: the credential file under `app/` folder
+
 ---
 
 ## 🛠️ How to Use

@@ -49,7 +49,11 @@
 > 🔍 Tech Stack  
 >  Built with Streamlit, LangChain, MongoDB, and Google Vertex AI.
 
-KnowBot is an interactive, intelligent RAG (Retrieval-Augmented Generation) chatbot designed to help users search, explore, and question academic documents with ease. It combines the power of semantic search, natural language understanding, and a user-friendly interface to deliver grounded, explainable answers.
+**KnowBot** is an intelligent academic research assistant powered by Retrieval-Augmented Generation (RAG). Designed for precision and explainability, it helps users **search**, **explore**, and **question academic documents** with context awareness.
+
+Unlike generic RAG systems, KnowBot supports document-specific queries, generates **follow-up questions**, and provides transparent source attribution for all responses. Leveraging **MongoDB**, **HuggingFace Embeddings**, and **Vertex AI**, it delivers semantically grounded insights through a clean, interactive UI.
+
+KnowBot is ideal for researchers, students, and professionals navigating complex literature with a focus on rigor and clarity.
 
 It leverages:
 
@@ -65,72 +69,97 @@ It leverages:
   <em>KnowBot Interface</em>
 </div>
 
-| Area                       | Description                                                                              |
-| -------------------------- | ---------------------------------------------------------------------------------------- |
-| 🔍 **Search Panel**        | Input your question to search for semantically related academic documents.               |
-| 📚 **Source Documents**    | Displays retrieved documents with LLM-generated summaries and buttons like “Add to Ref”. |
-| 📌 **Reference Docs**      | Shows documents that are currently selected as references for answering your question.   |
-| ❓ **Follow-up Questions** | Suggested next questions based on your current query and selected references.            |
+| Area                       | Description                                                                                                                |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| 🔍 **Search Panel**        | Input your research question to perform **semantic academic search** across indexed papers.                                |
+| 📚 **Source Documents**    | Displays retrieved academic documents with **LLM-generated summaries** and an “Add to Ref” button for selective reference. |
+| 📌 **Reference Docs**      | Lists documents you've selected as references. These are used to generate answers and offer **traceable, cited content**.  |
+| ❓ **Follow-up Questions** | Suggests relevant follow-up research questions based on your current query and selected references.                        |
 
-### ✨ Key Features
+## ✨ Key Features
 
-- 📄 Semantic Search  
- Retrieve documents based on meaning—not just keywords.
+- **Document Ingestion Module**: Supports loading academic documents in JSON and PDF formats. Upon ingestion, documents undergo chunking based on fixed character counts to create manageable text segments.
+- **Metadata Tagging Module**: Enriches each text chunk with relevant metadata, including document title, section headers, file source, and author details, enabling precise context retrieval and transparent source attribution.
+- **Summarization Module**: Utilizes Vertex AI large language models to generate concise summaries for each chunk, improving document preview capabilities and supporting efficient user exploration.
+- **Embedding and Indexing Module**: Employs HuggingFace embedding models to convert each chunk into dense semantic vectors. These embeddings, alongside metadata, are stored in MongoDB Atlas configured with vector search indexes. This supports rapid similarity queries that drive KnowBot’s semantic search.
+
+- **Retrieval-Augmented Generation (RAG) Module**: Combines retrieved document chunks with large language models to generate contextually grounded, explainable answers. Users can interactively select which reference documents to include, ensuring transparency and control over the sources informing responses.
+
 <p align="center">
 <img src="./img/model_structure_explain.gif" alt="drawing" width="400" height="200"/>
 <br> The Implementation of RAG </br>
 
-- 🧠 Reference-Based QA  
-   Ask questions using only your selected source documents for grounded, reliable answers.
-- 🧾 LLM-Powered Summaries  
-  Automatically generate concise document overviews using Vertex AI.
-- 🎛️ Intuitive UI  
-  Search, preview, and manage documents through a clean and responsive interface.
-- 💾 Persistent Storag  
-  Save useful papers for future reference and reuse.
-- 🧩 Modular Backen  
-  Built for easy expansion—supports future integrations like PDFs, JSONs, and more.
-- 🤝 Multi-Agent Read
-  Engineered to support planning and coordination via LangGraph.
+- **User Interface Module**: Provides a responsive, user-friendly frontend where users can perform semantic searches, view document previews and summaries, manage reference documents, and pose targeted questions. The interface emphasizes clarity and traceability, with explicit source citations for all generated answers.
+- **CI/CD Pipeline**: GitLab pipelines automate testing, building, and deployment, ensuring continuous integration and delivery for robust development workflows.
+
+---
 
 # New Updates
 
 > 🎉 　 KnowBot is born on May 21, 2025
 
+- 2025/06/05 Add in Vertex AI as our model inference
+- 2025/05/27 Knowbot added pdf reader, fooenote and reference for better search
+
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
-# Getting Started
+## 🚀 Getting Started
 
-> For data preparing and processing : [read here](README_DataProcess.md)
+1. Clone the repository:
 
-To deploy the application simply go to `deploy` folder.
+   ```bash
+   git clone git@gitlab.com:sc310542-group/KnowBot.git
+   cd KnowBot
+   ```
 
-1. Modify `.env` file
+2. Install dependencies:
 
-   - OPENAI_API_KEY
-   - HOST_PORT
-   - DEVICE
+   ```bash
+   bash script/build-docker-image.sh
+   ```
 
-   (MONGODB related settings)
+3. Set up your `.env` file:
 
-   - MONGODB_URI
-   - MONGODB_NAME
-   - COLLECTION
-   - INDEX_NAME
+   - Copy `.env.example` to `.env`
+   - Fill in the required keys:
+     - `MONGODB_URI`
+     - `MONGODB_NAME`
+     - `COLLECTION`
+     - `INDEX_NAME`
+     - `OPENAI_API_KEY`
+     - `VERTEX_PROJECT_ID`
+     - `VERTEX_LOCATION`
+     - `VERTEX_MODEL_NAME`
+     - `GOOGLE_APPLICATION_CREDENTIALS` (credential filepath)
 
-2. Build image
-   > [!INFO]
-   > First build will always take longer to run
+4. Launch the app:
 
-```
-bash script/build-docker-image.sh
-```
+   ```bash
+   cd deploy
+   docker-compose up -d
 
-3. Start the application
+   # for development
+   bash script/run-dev-mode.sh
+   streamlit run app.py --server.port=7860
+   ```
 
-```
-docker-compose up -d
-```
+---
+
+## 🛠️ How to Use
+
+1. **Search for academic content**  
+   Enter your question in the search panel. The system performs semantic search over ingested JSON/PDF documents.
+
+2. **Explore and select references**  
+   Browse the retrieved documents and their AI-generated summaries. Choose relevant ones by clicking **"Add to Ref"**.
+
+3. **Ask your question**  
+   With references selected, ask a question. The system uses only those documents to generate accurate, grounded answers.
+
+4. **View source and follow-ups**  
+   Check the sources of the answer, and explore suggested follow-up questions to continue your research.
+
+This tool is designed to support **academic knowledge exploration**, giving you control over your sources and transparent references.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

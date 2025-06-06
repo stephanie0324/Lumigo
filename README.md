@@ -177,9 +177,9 @@ Distributed under the MIT License. See `LICENSE.txt` for more information.
 
 ## Other Projects
 
-- [LLM Projects](https://github.com/stephanie0324/Finetune_LLM)
-- [Web-Scraping](https://github.com/stephanie0324/Web-Scraping-)
-- [Machine Learning with me](https://github.com/stephanie0324/ML_practrice)
+- [Microsoft 2025 LLM Agent Hackathon](https://github.com/stephanie0324/llm-agent-hack)
+- [LLM-RAG-UniApply](https://github.com/stephanie0324/LLM_RAG_UniApply)
+- [LLM_Projects](https://github.com/stephanie0324/LLM_Projects)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

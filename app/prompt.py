@@ -11,6 +11,30 @@ Instructions:
 
 """
 
+DECIDE_PROMPT = """
+You are the final decision agent.
+Given all previous information, synthesize a concise, clear, and non-redundant final answer.
+Do NOT repeat summaries or footnotes already provided.
+Output only the final answer to the user.
+
+## Last Reply
+{last_reply}
+"""
+
+EXPAND_PROMPT = """You are a research assistant helping improve the answer to a user's question.
+
+Original Question:
+{original_question}
+
+Please rephrase or expand the question to help retrieve better context,
+BUT ensure the core intent and topic are preserved.
+Avoid changing the meaning or introducing new concepts.
+
+Respond with ONLY the rewritten query.
+"""
+
+
+
 REFERENCE_PROMPT = """You are a helpful assistant. Your task is to answer the user's question using only the information provided in the reference documents below.
 
 Instructions:
@@ -41,11 +65,4 @@ Third paragraph adding further details.[^2][^4]
 > #### Question 1?  
 > #### Question 2?  
 > #### Question 3?
-
-Question:  
-{{user_question}}
-
-References:  
-{{references}}
-
 """

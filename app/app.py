@@ -1,13 +1,10 @@
+
 import re
 import asyncio
 import streamlit as st
-from langchain_core.messages import HumanMessage, SystemMessage
-from graph import create_graph
-from vectorDB import update_db_async, vector_search
+from multi_graph import create_graph, build_initial_graph_state, MAX_ITERATIONS
+from vectorDB import update_db_async
 from prompt import SUMMARY_PROMPT, REFERENCE_PROMPT
-from utils import format_docs_for_prompt
-from config import settings
-from logger import logger
 
 
 def init_state():
@@ -23,6 +20,7 @@ def init_state():
         "markdown_doc": "",
         "trigger_rerun": False,
         "used_indices": [],
+        "explore_mode": False,
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -54,6 +52,7 @@ def split_answer_followups(raw_answer):
 def extract_followups(response: str):
     return re.findall(r"> #### (.+)", response)
 
+
 def render_sidebar():
     st.sidebar.header("📘 How to use KnowBot")
     st.sidebar.markdown("👉 For full instructions, go to the **Help** page.")
@@ -65,11 +64,7 @@ def render_sidebar():
         "4. Ask using references"
     )
 
-    # 其他 sidebar 元件 ...
-
-    # 最底部 Developer Tools
-    dev_section = st.sidebar.container()
-    with dev_section.expander("🛠️ Developer Tools (WIP)"):
+    with st.sidebar.expander("🛠️ Developer Tools (WIP)"):
         st.markdown("*The following feature is under development.*")
         if st.button("🔄 Update Vector DB"):
             with st.spinner("Updating database..."):
@@ -78,65 +73,62 @@ def render_sidebar():
             st.session_state.trigger_rerun = True
 
 
-
-
-
 def render_input_area():
     st.markdown("### 💬 Ask KnowBot")
     input_col, btn_col = st.columns([10, 1])
-    input_col.text_input(
-        "User Input",
-        key="user_input",
-        value=st.session_state.user_input,
-        placeholder="e.g. What is LLM orchestration?",
-        label_visibility="collapsed",
-    )
+
+    with input_col:
+        st.text_input(
+            "User Input",
+            key="user_input",
+            placeholder="e.g. What is LLM orchestration?",
+            label_visibility="collapsed",
+        )
+        st.checkbox("🔎 Explore mode (expand your queries at least once)", key="explore_mode")
+
     if btn_col.button("Send"):
         submit_query()
-
 
 def render_answer_area(graph):
     if st.session_state.submitted and st.session_state.query:
         query = st.session_state.query
         st.session_state.submitted = False
 
-        # If no reference docs selected, do a vector search
-        if not st.session_state.reference_docs:
-            with st.spinner("Searching and analyzing documents..."):
-                docs = vector_search(query)
-                logger.debug(f"Related documents for query: {docs}")
-                st.session_state.related_docs = docs
-        else:
-            docs = st.session_state.reference_docs
+        mode = "explore" if st.session_state.explore_mode else "direct"
+        initial_state = build_initial_graph_state(query, mode)
+        initial_state["reference_docs"] = st.session_state.reference_docs
+        
+        final_answer = ""
 
-        # Generate answer
-        with st.spinner("Generating Answer with Documents..."):
-            formatted = format_docs_for_prompt(docs)
-            messages = [
-                SystemMessage(content=REFERENCE_PROMPT),
-                HumanMessage(content=f"Reference:\n{formatted}\n\nQuestion: {query}"),
-            ]
-            answer = ""
-            for output in graph.stream({"messages": messages}, config={"streaming": True}):
-                msgs = output.get("llm", {}).get("messages") or output.get("messages")
-                if msgs and hasattr(msgs[-1], "content"):
-                    answer += msgs[-1].content
+        with st.expander("🧩 Agent Execution Steps", expanded=False):
+            for step_output in graph.stream(initial_state, config={"streaming": True}):
+                for step_name, state in step_output.items():
+                    st.write(f"Step: `{step_name}`")
 
-            raw_answer = "\n".join(answer.strip().split("\n"))
-            trimmed, followup = split_answer_followups(raw_answer)
+                    if step_name == "agent_retrieve":
+                        messages = state.get("messages", [])
+                        if messages:
+                            final_answer = messages[-1].content
 
+                        st.session_state.related_docs = state.get("related_docs", [])
+
+        st.success("✅ Agent execution complete!")
+
+        if final_answer:
+            trimmed, followup = split_answer_followups(final_answer)
             st.session_state.answer = trimmed
             st.session_state.used_indices = list(extract_used_doc_indices(trimmed))
 
-            followups = extract_followups(followup)
-
-            st.markdown("#### 🤖 Answer")
+            st.markdown("## 🤖 Final Answer")
             st.markdown(trimmed)
 
+            followups = extract_followups(followup)
             if followups:
-                st.markdown("### 💡 Explore Further")
+                st.markdown("### 💡 Follow-up Questions")
                 for i, q in enumerate(followups):
                     st.button(q, key=f"followup_{i}", on_click=trigger_question, args=(q,))
+        else:
+            st.warning("⚠️ No meaningful output from the agent.")
 
 
 def render_reference_docs():
@@ -151,9 +143,11 @@ def render_reference_docs():
                 with cols[1]:
                     if st.button("❌", key=f"remove_ref_{idx}"):
                         st.session_state.reference_docs.pop(idx)
+                        init_state.reference_docs.pop(idx)
                         st.session_state.trigger_rerun = True
         else:
             st.info("No reference documents selected.")
+
 
 
 def render_related_docs():
@@ -168,7 +162,7 @@ def render_related_docs():
                 if st.button("➕", key=f"add_ref_{idx}"):
                     if doc not in st.session_state.reference_docs:
                         st.session_state.reference_docs.append(doc)
-                        st.experimental_rerun()
+                        st.rerun()
             with cols[2]:
                 with st.expander(f"[{idx+1}] {doc.get('title', 'No Title')}"):
                     st.write("**Summary:**")
@@ -178,18 +172,12 @@ def render_related_docs():
 
 
 def main_content():
-    graph = create_graph()
-
     render_sidebar()
-
     main_col, preview_col = st.columns([2, 1])
-
     with main_col:
         render_input_area()
+        graph = create_graph(st.session_state.explore_mode)
         render_answer_area(graph)
-
     with preview_col:
         render_reference_docs()
         render_related_docs()
-
-

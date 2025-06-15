@@ -98,6 +98,7 @@ It leverages:
 
 > 🎉 　 KnowBot is born on May 21, 2025
 
+- 2025/06/15 Add in **Multi-Agent** worflow for better search and query expand experience
 - 2025/06/05 Add in Vertex AI as our model inference
 - 2025/05/27 Knowbot added pdf reader, fooenote and reference for better search
 

@@ -26,7 +26,7 @@
   <p>Ask freely — KnowBot will return grounded answers with trusted reference documents.</p>
 
   <p>
-    🌐 <a href="https://607d-123-192-82-141.ngrok-free.app" target="_blank"><strong>Live Demo</strong></a>
+    🌐 <a href="https://dcce-123-192-82-141.ngrok-free.app" target="_blank"><strong>Live Demo</strong></a>
   </p>
 
   <br>

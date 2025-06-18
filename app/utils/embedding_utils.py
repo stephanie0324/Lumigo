@@ -1,12 +1,11 @@
 # file: utils/embedding_helper.py
 
 from langchain_community.embeddings import HuggingFaceBgeEmbeddings
-from config import settings
 from typing import List
 import numpy as np
 
+from core.config import settings
 
-# 初始化 embedding model（只要初始化一次）
 _embedding_model = HuggingFaceBgeEmbeddings(
     **settings.RAG_INDEX_HF_EMBEDDING_MODEL_CONFIG
 )
@@ -31,10 +30,8 @@ def cosine_sim(a: List[float], b: List[float]) -> float:
 
 
 def format_docs_for_prompt(docs):
-    formatted = []
-    for i, doc in enumerate(docs):
-        title = doc.get("title", "No Title")
-        content = doc.get("content", "No content.")
-        doc_text = f"[Doc: {i+1}] Title: {title}\nContent:\n{content}\n\n---"
-        formatted.append(doc_text)
-    return "\n".join(formatted)
+    return "\n".join(
+    f"[Doc: {i+1}] Title: {doc.get('title', 'No Title')}\nContent:\n{doc.get('content', 'No content.')}\n\n---"
+    for i, doc in enumerate(docs)
+)
+

@@ -1,56 +1,11 @@
-
-import re
-import asyncio
 import streamlit as st
-from multi_graph import create_graph, build_initial_graph_state, MAX_ITERATIONS
-from vectorDB import update_db_async
-from prompt import SUMMARY_PROMPT, REFERENCE_PROMPT
-
-
-def init_state():
-    defaults = {
-        "saved_docs": [],
-        "reference_docs": [],
-        "related_docs": [],
-        "query": "",
-        "submitted": False,
-        "selected_doc_idx": None,
-        "answer": "",
-        "user_input": "",
-        "markdown_doc": "",
-        "trigger_rerun": False,
-        "used_indices": [],
-        "explore_mode": False,
-    }
-    for k, v in defaults.items():
-        if k not in st.session_state:
-            st.session_state[k] = v
-
-
-def submit_query():
-    if st.session_state.user_input.strip():
-        st.session_state.query = st.session_state.user_input.strip()
-        st.session_state.submitted = True
-
-
-def trigger_question(question):
-    st.session_state.user_input = question
-    st.session_state.query = question
-    st.session_state.submitted = True
-    st.session_state.trigger_rerun = True
-
-
-def extract_used_doc_indices(answer):
-    return {int(m) - 1 for m in re.findall(r"\[\^(\d+)\]", answer)}
-
-
-def split_answer_followups(raw_answer):
-    parts = re.split(r"\n^#{1,6}\s*💡.*$", raw_answer, flags=re.MULTILINE)
-    return (parts[0].strip(), parts[1].strip() if len(parts) > 1 else "")
-
-
-def extract_followups(response: str):
-    return re.findall(r"> #### (.+)", response)
+import asyncio
+from core.backend import (
+    init_state, submit_query, trigger_question,
+    extract_used_doc_indices, split_answer_followups,
+    extract_followups, get_graph, async_update_db
+)
+from core.multi_graph import build_initial_graph_state  # 這裡單獨引入
 
 
 def render_sidebar():
@@ -68,7 +23,7 @@ def render_sidebar():
         st.markdown("*The following feature is under development.*")
         if st.button("🔄 Update Vector DB"):
             with st.spinner("Updating database..."):
-                asyncio.run(update_db_async())
+                asyncio.run(async_update_db())
             st.success("Database update complete ✅")
             st.session_state.trigger_rerun = True
 
@@ -89,6 +44,7 @@ def render_input_area():
     if btn_col.button("Send"):
         submit_query()
 
+
 def render_answer_area(graph):
     if st.session_state.submitted and st.session_state.query:
         query = st.session_state.query
@@ -97,7 +53,7 @@ def render_answer_area(graph):
         mode = "explore" if st.session_state.explore_mode else "direct"
         initial_state = build_initial_graph_state(query, mode)
         initial_state["reference_docs"] = st.session_state.reference_docs
-        
+
         final_answer = ""
 
         with st.expander("🧩 Agent Execution Steps", expanded=False):
@@ -143,11 +99,9 @@ def render_reference_docs():
                 with cols[1]:
                     if st.button("❌", key=f"remove_ref_{idx}"):
                         st.session_state.reference_docs.pop(idx)
-                        init_state.reference_docs.pop(idx)
-                        st.session_state.trigger_rerun = True
+                        st.rerun()
         else:
             st.info("No reference documents selected.")
-
 
 
 def render_related_docs():
@@ -172,12 +126,17 @@ def render_related_docs():
 
 
 def main_content():
+    init_state()
     render_sidebar()
     main_col, preview_col = st.columns([2, 1])
     with main_col:
         render_input_area()
-        graph = create_graph(st.session_state.explore_mode)
+        graph = get_graph(st.session_state.explore_mode)
         render_answer_area(graph)
     with preview_col:
         render_reference_docs()
         render_related_docs()
+
+
+if __name__ == "__main__":
+    main_content()

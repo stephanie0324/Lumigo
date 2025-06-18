@@ -11,6 +11,11 @@ Instructions:
 
 """
 
+TAGS_PROMPT = """
+You are an academic assistant that reads the given text and outputs 2-3 broad and commonly used academic topic tags.
+Return only the tags, separated by commas. Do NOT include explanations or any extra text.
+"""
+
 DECIDE_PROMPT = """
 You are the final decision agent.
 Given all previous information, synthesize a concise, clear, and non-redundant final answer.

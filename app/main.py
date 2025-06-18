@@ -1,7 +1,7 @@
 import streamlit as st
-from app import init_state, main_content
-from instruction import instruction_page
-from config import settings
+from ui.home import init_state, main_content
+from ui.instruction import instruction_page
+from core.config import settings
 
 st.set_page_config(page_title=settings.DEMO_WEB_PAGE_TITLE, page_icon="🤖", layout="wide")
 

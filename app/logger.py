@@ -1,6 +1,6 @@
 import logging
 
-from config import settings
+from core.config import settings
 
 logging.basicConfig(
     format=settings.LOG_FORMAT,

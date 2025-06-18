@@ -2,12 +2,12 @@ from typing import Literal, TypedDict, List
 from langgraph.graph import StateGraph, END
 from langgraph.types import Command
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
-from model import llm
-from utils import get_text_embedding, cosine_sim, format_docs_for_prompt
-from vectorDB import vector_search
-from prompt import DECIDE_PROMPT, EXPAND_PROMPT, REFERENCE_PROMPT
 
-from logger import logger
+
+from utils.embedding_utils import get_text_embedding, cosine_sim, format_docs_for_prompt
+from utils.db_utils import vector_search
+from .prompt import DECIDE_PROMPT, EXPAND_PROMPT, REFERENCE_PROMPT
+from .model import llm
 
 MAX_ITERATIONS = 3
 
@@ -125,9 +125,9 @@ def build_initial_graph_state(query: str, mode: Literal["explore", "direct"] = "
 
 if __name__ == "__main__":
     query = "What are the latest advancements in AI?"
-    mode = "explore"  # 可以是 "explore" 或 "direct"
+    mode = "explore" 
+    
     state = build_initial_graph_state(query, mode)
-    # 產生 graph 實例
     graph = create_graph(mode)
 
     print("Initial State:", state)

@@ -1,5 +1,6 @@
 import streamlit as st
 import asyncio
+
 from core.backend import (
     init_state, submit_query, trigger_question,
     extract_used_doc_indices, split_answer_followups,
@@ -8,6 +9,8 @@ from core.backend import (
 from core.multi_graph import build_initial_graph_state  # 這裡單獨引入
 
 
+
+    
 def render_sidebar():
     st.sidebar.header("📘 How to use KnowBot")
     st.sidebar.markdown("👉 For full instructions, go to the **Help** page.")
@@ -39,7 +42,6 @@ def render_input_area():
             placeholder="e.g. What is LLM orchestration?",
             label_visibility="collapsed",
         )
-        st.checkbox("🔎 Explore mode (expand your queries at least once)", key="explore_mode")
 
     if btn_col.button("Send"):
         submit_query()
@@ -50,26 +52,41 @@ def render_answer_area(graph):
         query = st.session_state.query
         st.session_state.submitted = False
 
-        mode = "explore" if st.session_state.explore_mode else "direct"
-        initial_state = build_initial_graph_state(query, mode)
-        initial_state["reference_docs"] = st.session_state.reference_docs
+        initial_state = build_initial_graph_state(query)
+        initial_state["reference_docs"] = st.session_state.get("reference_docs", [])
 
         final_answer = ""
 
-        with st.expander("🧩 Agent Execution Steps", expanded=False):
-            for step_output in graph.stream(initial_state, config={"streaming": True}):
-                for step_name, state in step_output.items():
-                    st.write(f"Step: `{step_name}`")
+        # Reserve a placeholder for streaming logs
+        timeline_container = st.empty()
 
-                    if step_name == "agent_retrieve":
-                        messages = state.get("messages", [])
-                        if messages:
-                            final_answer = messages[-1].content
+        for step_output in graph.stream(initial_state, config={"streaming": True}):
+            for step_name, state in step_output.items():
+                # Extract trace and logs dict
+                trace = state.get("trace", [])
+                logs_dict = state.get("logs", {})
 
-                        st.session_state.related_docs = state.get("related_docs", [])
+                # Build incremental log text from trace and logs_dict
+                log_lines = []
+                for step in trace:
+                    step_logs = logs_dict.get(step, [])
+                    if step_logs:
+                        log_lines.append(f"### Step: `{step}`")
+                        for entry in step_logs:
+                            log_lines.append(f"- {entry}")
 
+                # Update the timeline_container with current logs as markdown
+                timeline_container.markdown("\n".join(log_lines))
+
+                # Save final answer when synthesis step is reached
+                if step_name == "agent_synthesis":
+                    final_answer = state.get("final_answer", "")
+                    st.session_state.related_docs = state.get("related_docs", [])
         st.success("✅ Agent execution complete!")
+        
+        timeline_container.empty()  # Clear the placeholder after execution
 
+        # Optionally render the full timeline widget once at the end:
         if final_answer:
             trimmed, followup = split_answer_followups(final_answer)
             st.session_state.answer = trimmed
@@ -131,7 +148,7 @@ def main_content():
     main_col, preview_col = st.columns([2, 1])
     with main_col:
         render_input_area()
-        graph = get_graph(st.session_state.explore_mode)
+        graph = get_graph()
         render_answer_area(graph)
     with preview_col:
         render_reference_docs()

@@ -2,7 +2,10 @@
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from langchain_google_vertexai import ChatVertexAI
+from langchain_community.embeddings import HuggingFaceBgeEmbeddings
+
 from google.cloud import aiplatform
+from vertexai.preview.language_models import TextEmbeddingModel
 
 
 from .config import settings
@@ -18,3 +21,23 @@ if len(settings.PROJECT_ID) and len(settings.LOCATION):
     )
 else:
     llm = ChatOpenAI(model="gpt-4o-mini", streaming=False)
+    
+class EmbeddingModelWrapper:
+    def __init__(self):
+        if len(settings.PROJECT_ID) and len(settings.LOCATION):
+            self.use_vertexai = True
+            self.model = TextEmbeddingModel.from_pretrained("text-multilingual-embedding-002")
+        else:
+            self.use_vertexai = False
+            self.model = HuggingFaceBgeEmbeddings(**settings.RAG_INDEX_HF_EMBEDDING_MODEL_CONFIG)
+
+    def get_embeddings(self, texts):
+        if self.use_vertexai:
+            response = self.model.get_embeddings([texts])
+            return response[0].values
+        else:
+            return self.model.embed_documents(texts)
+
+embedding_model = EmbeddingModelWrapper()
+
+

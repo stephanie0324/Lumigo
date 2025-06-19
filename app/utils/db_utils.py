@@ -16,7 +16,7 @@ from pymongo import MongoClient
 from core.config import settings
 from logger import logger
 from utils.embedding_utils import get_text_embedding
-from utils.data_preprocess import load_and_process_pdf_async, load_and_process_json_async
+from utils.data_utils import load_and_process_pdf_async, load_and_process_json_async
 
 
 sync_collection = MongoClient(settings.MONGODB_URI)[settings.MONGODB_NAME][settings.COLLECTION]
@@ -78,7 +78,7 @@ def deduplicate_by_title(docs, top_k: int):
     return list(seen.values())[:top_k]
 
 
-def vector_search(query: str, top_k: int = 5):
+def vector_search(query: str, top_k: int = 3):
     """Perform a synchronous vector similarity search using MongoDB $vectorSearch."""
     query_vec = get_text_embedding(query)
 

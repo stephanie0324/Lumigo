@@ -50,8 +50,8 @@ def extract_followups(response: str):
     return re.findall(r"> #### (.+)", response)
 
 
-def get_graph(explore_mode):
-    return create_graph(explore_mode)
+def get_graph():
+    return create_graph()
 
 
 async def async_update_db():

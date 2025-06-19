@@ -5,10 +5,7 @@ from typing import List
 import numpy as np
 
 from core.config import settings
-
-_embedding_model = HuggingFaceBgeEmbeddings(
-    **settings.RAG_INDEX_HF_EMBEDDING_MODEL_CONFIG
-)
+from core.model import embedding_model
 
 
 def get_text_embedding(text: str) -> list[float]:
@@ -21,7 +18,8 @@ def get_text_embedding(text: str) -> list[float]:
     Returns:
         list[float]: Embedding vector.
     """
-    return _embedding_model.embed_query(text)
+    
+    return embedding_model.get_embeddings(text)
 
 def cosine_sim(a: List[float], b: List[float]) -> float:
     """Calculate cosine similarity between two vectors."""

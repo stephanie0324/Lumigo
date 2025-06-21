@@ -121,7 +121,7 @@ It leverages:
 
 3. Set up your `.env` file:
 
-   - Copy `.env.example` to `.env`
+   - The `.env` file is under `deploy/` folder
    - Fill in the required keys:
      - `MONGODB_URI`
      - `MONGODB_NAME`

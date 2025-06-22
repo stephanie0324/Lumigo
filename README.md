@@ -1,21 +1,21 @@
 <a name="readme-top"></a>
 
-<h1 align="center"> KnowBot: A Q&A Chatbot for Academic Document Exploration </h1>
+<h1 align="center"> Lumigo: A Q&A Chatbot for Academic Document Exploration </h1>
 
 <p align="center">
     <a href="https://github.com/FlagOpen/FlagEmbedding">
             <img alt="Build" src="https://img.shields.io/badge/Contribution-Welcome-lightblue">
     </a>
-    <a href="https://github.com/stephanie0324/KnowBot/stargazers">
-        <img alt="Build" src="https://img.shields.io/github/stars/stephanie0324/KnowBot.svg?color=yellow&style=flat&label=Stars&logoColor=white">
+    <a href="https://github.com/stephanie0324/Lumigo/stargazers">
+        <img alt="Build" src="https://img.shields.io/github/stars/stephanie0324/Lumigo.svg?color=yellow&style=flat&label=Stars&logoColor=white">
     </a>
-    <a href="https://github.com/stephanie0324/KnowBot/forks">
-        <img alt="badge" src="https://img.shields.io/github/forks/stephanie0324/KnowBot.svg?style=flat&label=Forks">
+    <a href="https://github.com/stephanie0324/Lumigo/forks">
+        <img alt="badge" src="https://img.shields.io/github/forks/stephanie0324/Lumigo.svg?style=flat&label=Forks">
     </a>
-    <a href="https://github.com/stephanie0324/KnowBot/issues">
-        <img alt="badge" src="https://img.shields.io/github/issues/stephanie0324/KnowBot.svg?style=flat&label=Issues&color=lightpink">
+    <a href="https://github.com/stephanie0324/Lumigo/issues">
+        <img alt="badge" src="https://img.shields.io/github/issues/stephanie0324/Lumigo.svg?style=flat&label=Issues&color=lightpink">
     </a>
-    <a href="https://github.com/stephanie0324/KnowBot/tree/main?tab=readme-ov-file#MIT-1-ov-file">
+    <a href="https://github.com/stephanie0324/Lumigo/tree/main?tab=readme-ov-file#MIT-1-ov-file">
         <img alt="badge" src="https://img.shields.io/badge/Licence-MIT-lightgreen">
     </a>
 </p>
@@ -23,7 +23,7 @@
 
   <p>This is a chatbot built with Retrieval-Augmented Generation (RAG) for in-depth semantic search across research papers and theses.</p>
 
-  <p>Ask freely — KnowBot will return grounded answers with trusted reference documents.</p>
+  <p>Ask freely — Lumigo will return grounded answers with trusted reference documents.</p>
 
   <p>
     🌐 <a href="https://dcce-123-192-82-141.ngrok-free.app" target="_blank"><strong>Live Demo</strong></a>
@@ -49,11 +49,11 @@
 > 🔍 Tech Stack  
 >  Built with Streamlit, LangChain, MongoDB, and Google Vertex AI.
 
-**KnowBot** is an intelligent academic research assistant powered by Retrieval-Augmented Generation (RAG). Designed for precision and explainability, it helps users **search**, **explore**, and **question academic documents** with context awareness.
+**Lumigo** is an intelligent academic research assistant powered by Retrieval-Augmented Generation (RAG). Designed for precision and explainability, it helps users **search**, **explore**, and **question academic documents** with context awareness.
 
-Unlike generic RAG systems, KnowBot supports document-specific queries, generates **follow-up questions**, and provides transparent source attribution for all responses. Leveraging **MongoDB**, **HuggingFace Embeddings**, and **Vertex AI**, it delivers semantically grounded insights through a clean, interactive UI.
+Unlike generic RAG systems, Lumigo supports document-specific queries, generates **follow-up questions**, and provides transparent source attribution for all responses. Leveraging **MongoDB**, **HuggingFace Embeddings**, and **Vertex AI**, it delivers semantically grounded insights through a clean, interactive UI.
 
-KnowBot is ideal for researchers, students, and professionals navigating complex literature with a focus on rigor and clarity.
+Lumigo is ideal for researchers, students, and professionals navigating complex literature with a focus on rigor and clarity.
 
 It leverages:
 
@@ -64,9 +64,9 @@ It leverages:
 
 <div align="center">
   <p class="image-cropper">
-    <img src="knowbot.gif" alt="KnowBot Interface" width="600"/>
+    <img src="Lumigo.gif" alt="Lumigo Interface" width="600"/>
   </p>
-  <em>KnowBot Interface</em>
+  <em>Lumigo Interface</em>
 </div>
 
 | Area                       | Description                                                                                                                |
@@ -81,7 +81,7 @@ It leverages:
 - **Document Ingestion Module**: Supports loading academic documents in JSON and PDF formats. Upon ingestion, documents undergo chunking based on fixed character counts to create manageable text segments.
 - **Metadata Tagging Module**: Enriches each text chunk with relevant metadata, including document title, section headers, file source, and author details, enabling precise context retrieval and transparent source attribution.
 - **Summarization Module**: Utilizes Vertex AI large language models to generate concise summaries for each chunk, improving document preview capabilities and supporting efficient user exploration.
-- **Embedding and Indexing Module**: Employs HuggingFace embedding models to convert each chunk into dense semantic vectors. These embeddings, alongside metadata, are stored in MongoDB Atlas configured with vector search indexes. This supports rapid similarity queries that drive KnowBot’s semantic search.
+- **Embedding and Indexing Module**: Employs HuggingFace embedding models to convert each chunk into dense semantic vectors. These embeddings, alongside metadata, are stored in MongoDB Atlas configured with vector search indexes. This supports rapid similarity queries that drive Lumigo’s semantic search.
 
 - **Retrieval-Augmented Generation (RAG) Module**: Combines retrieved document chunks with large language models to generate contextually grounded, explainable answers. Users can interactively select which reference documents to include, ensuring transparency and control over the sources informing responses.
 
@@ -96,11 +96,11 @@ It leverages:
 
 # New Updates
 
-> 🎉 　 KnowBot is born on May 21, 2025
+> 🎉 　 Lumigo is born on May 21, 2025
 
 - 2025/06/15 Add in **Multi-Agent** worflow for better search and query expand experience
 - 2025/06/05 Add in Vertex AI as our model inference
-- 2025/05/27 Knowbot added pdf reader, fooenote and reference for better search
+- 2025/05/27 Lumigo added pdf reader, fooenote and reference for better search
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -109,8 +109,8 @@ It leverages:
 1. Clone the repository:
 
    ```bash
-   git clone git@gitlab.com:sc310542-group/KnowBot.git
-   cd KnowBot
+   git clone git@gitlab.com:sc310542-group/Lumigo.git
+   cd Lumigo
    ```
 
 2. Install dependencies:

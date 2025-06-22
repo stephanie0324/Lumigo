@@ -1,0 +1,40 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - main # 你主要的分支名稱
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ secrets.PROJECT_ID }}
+          service_account_key: ${{ secrets.GCLOUD_SERVICE_KEY }}
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker
+
+      - name: Build Docker image
+        run: |
+          docker build -t gcr.io/${{ secrets.PROJECT_ID }}/${{ secrets.SERVICE_NAME }}:$GITHUB_SHA .
+
+      - name: Push Docker image
+        run: |
+          docker push gcr.io/${{ secrets.PROJECT_ID }}/${{ secrets.SERVICE_NAME }}:$GITHUB_SHA
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ secrets.SERVICE_NAME }} \
+            --image gcr.io/${{ secrets.PROJECT_ID }}/${{ secrets.SERVICE_NAME }}:$GITHUB_SHA \
+            --region ${{ secrets.REGION }} \
+            --platform managed \
+            --quiet \
+            --allow-unauthenticated

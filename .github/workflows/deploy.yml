@@ -19,8 +19,8 @@ jobs:
           project_id: ${{ secrets.PROJECT_ID }}
           service_account_key: ${{ secrets.GCLOUD_SERVICE_KEY }}
 
-      - name: Configure Docker
-        run: gcloud auth configure-docker
+      - name: Configure Docker for gcr.io only
+        run: gcloud auth configure-docker gcr.io
 
       - name: Build Docker image
         run: docker build -t gcr.io/${{ secrets.PROJECT_ID }}/${{ secrets.SERVICE_NAME }}:$GITHUB_SHA .
@@ -35,4 +35,5 @@ jobs:
             --region ${{ secrets.REGION }} \
             --platform managed \
             --quiet \
-            --allow-unauthenticated
+            --allow-unauthenticated \
+            --verbosity debug

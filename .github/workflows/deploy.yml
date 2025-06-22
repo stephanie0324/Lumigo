@@ -19,21 +19,24 @@ jobs:
           project_id: ${{ secrets.PROJECT_ID }}
           service_account_key: ${{ secrets.GCLOUD_SERVICE_KEY }}
 
-      - name: Configure Docker for gcr.io only
-        run: gcloud auth configure-docker gcr.io
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{
+          secrets.REGION
+        }}-docker.pkg.dev --quiet
 
       - name: Build Docker image
-        run: docker build -t gcr.io/${{ secrets.PROJECT_ID }}/${{ secrets.SERVICE_NAME }}:$GITHUB_SHA .
+        run: |
+          docker build -t ${{ secrets.REGION }}-docker.pkg.dev/${{ secrets.PROJECT_ID }}/${{ secrets.REPOSITORY }}/${{ secrets.SERVICE_NAME }}:$GITHUB_SHA .
 
       - name: Push Docker image
-        run: docker push gcr.io/${{ secrets.PROJECT_ID }}/${{ secrets.SERVICE_NAME }}:$GITHUB_SHA
+        run: |
+          docker push ${{ secrets.REGION }}-docker.pkg.dev/${{ secrets.PROJECT_ID }}/${{ secrets.REPOSITORY }}/${{ secrets.SERVICE_NAME }}:$GITHUB_SHA
 
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy ${{ secrets.SERVICE_NAME }} \
-            --image gcr.io/${{ secrets.PROJECT_ID }}/${{ secrets.SERVICE_NAME }}:$GITHUB_SHA \
+            --image ${{ secrets.REGION }}-docker.pkg.dev/${{ secrets.PROJECT_ID }}/${{ secrets.REPOSITORY }}/${{ secrets.SERVICE_NAME }}:$GITHUB_SHA \
             --region ${{ secrets.REGION }} \
             --platform managed \
             --quiet \
-            --allow-unauthenticated \
-            --verbosity debug
+            --allow-unauthenticated

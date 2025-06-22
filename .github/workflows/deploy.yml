@@ -13,29 +13,40 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # ✅ 使用新版 Google Auth 登入 GCP
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCLOUD_SERVICE_KEY }}
+
+      # ✅ 安裝並設定 gcloud CLI
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
         with:
           project_id: ${{ secrets.PROJECT_ID }}
-          service_account_key: ${{ secrets.GCLOUD_SERVICE_KEY }}
-          export_default_credentials: true
 
-      - name: Configure Docker for Artifact Registry
-        run: |
-          gcloud auth configure-docker ${{ secrets.REGION }}-docker.pkg.dev --quiet
+      # ✅ 檢查目前登入狀態
       - name: Verify gcloud identity
         run: |
           gcloud auth list
           gcloud config list
 
+      # ✅ 設定 Docker 認證（給 Artifact Registry 用）
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ secrets.REGION }}-docker.pkg.dev --quiet
+
+      # ✅ 建構 Docker 映像檔
       - name: Build Docker image
         run: |
           docker build -t ${{ secrets.REGION }}-docker.pkg.dev/${{ secrets.PROJECT_ID }}/${{ secrets.REPOSITORY }}/${{ secrets.SERVICE_NAME }}:$GITHUB_SHA .
 
+      # ✅ 推送映像檔到 Artifact Registry
       - name: Push Docker image
         run: |
           docker push ${{ secrets.REGION }}-docker.pkg.dev/${{ secrets.PROJECT_ID }}/${{ secrets.REPOSITORY }}/${{ secrets.SERVICE_NAME }}:$GITHUB_SHA
 
+      # ✅ 部署到 Cloud Run
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy ${{ secrets.SERVICE_NAME }} \

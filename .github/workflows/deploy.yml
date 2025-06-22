@@ -3,7 +3,7 @@ name: Deploy to Cloud Run
 on:
   push:
     branches:
-      - main # 你主要的分支名稱
+      - main
 
 jobs:
   build-deploy:
@@ -23,12 +23,10 @@ jobs:
         run: gcloud auth configure-docker
 
       - name: Build Docker image
-        run: |
-          docker build -t gcr.io/${{ secrets.PROJECT_ID }}/${{ secrets.SERVICE_NAME }}:$GITHUB_SHA .
+        run: docker build -t gcr.io/${{ secrets.PROJECT_ID }}/${{ secrets.SERVICE_NAME }}:$GITHUB_SHA .
 
       - name: Push Docker image
-        run: |
-          docker push gcr.io/${{ secrets.PROJECT_ID }}/${{ secrets.SERVICE_NAME }}:$GITHUB_SHA
+        run: docker push gcr.io/${{ secrets.PROJECT_ID }}/${{ secrets.SERVICE_NAME }}:$GITHUB_SHA
 
       - name: Deploy to Cloud Run
         run: |

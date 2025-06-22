@@ -15,7 +15,7 @@ services:
       DEVICE: "${DEVICE}"
       PROJECT_ID: "${PROJECT_ID}"
       LOCATION: "${LOCATION}"
-      GOOGLE_srcLICATION_CREDENTIALS: "/src/credentials.json"
+      GOOGLE_APPLICATION_CREDENTIALS: "/src/credentials.json"
 
     volumes:
       - ./credentials.json:/src/credentials.json:ro

@@ -28,7 +28,7 @@ class Settings(BaseSettings):
 
     # LLM RAG File Path
     RAG_FILES_FILEPATH: str = "./data"
-    RAG_INDEX_PREFIX: ClassVar[str] = f"knowbot"
+    RAG_INDEX_PREFIX: ClassVar[str] = f"lumigo"
 
     DEVICE: str = "cpu"
     EMBEDDING_MODEL_NAME: str = "ibm-granite/granite-embedding-125m-english"
@@ -50,8 +50,8 @@ class Settings(BaseSettings):
         print(v)
         return v
 
-    DEMO_WEB_PAGE_TITLE: str = "KnowBot (.◜◡◝)"
-    DEMO_WEB_TITLE: str = "KnowBot (.◜◡◝)"
+    DEMO_WEB_PAGE_TITLE: str = "Lumigo (.◜◡◝)"
+    DEMO_WEB_TITLE: str = "Lumigo (.◜◡◝)"
     DEMO_WEB_DESCRIPTION: str = (
         """<ul><li>What would you like to search today?</li></<ul>"""
     )

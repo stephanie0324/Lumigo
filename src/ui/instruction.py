@@ -1,7 +1,7 @@
 import streamlit as st
 
 def instruction_page():
-    st.title("📚 How to Use KnowBot")
+    st.title("📚 How to Use Lumigo")
     st.caption("Your calm and capable AI assistant for exploring academic papers in a thoughtful way.")
 
     st.subheader("🧭 Quick Start Guide")
@@ -22,7 +22,7 @@ def instruction_page():
     # --- Step 3 ---
     st.warning("""#### ③ Ask and Receive Answers  
 > Press the **Ask** button.  
-> KnowBot will respond based on your chosen references,  
+> Lumigo will respond based on your chosen references,  
 > including citations and related follow-up questions.
 """)
 
@@ -45,4 +45,4 @@ def instruction_page():
     st.markdown("---")
     st.subheader("💬 Need Help?")
     st.caption("We’re here to help. Contact us via:")
-    st.markdown("[GitHub Issues](https://github.com/stephanie0324/KnowBot/issues) or leave feedback in the app.")
+    st.markdown("[GitHub Issues](https://github.com/stephanie0324/Lumigo/issues) or leave feedback in the app.")

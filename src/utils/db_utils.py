@@ -12,6 +12,7 @@ import os
 import asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import MongoClient
+from datetime import datetime
 
 from core.config import settings
 from logger import logger
@@ -21,6 +22,7 @@ from utils.data_utils import load_and_process_pdf_async, load_and_process_json_a
 
 sync_collection = MongoClient(settings.MONGODB_URI)[settings.MONGODB_NAME][settings.COLLECTION]
 async_collection = AsyncIOMotorClient(settings.MONGODB_URI)[settings.MONGODB_NAME][settings.COLLECTION]
+query_history_collection = MongoClient(settings.MONGODB_URI)[settings.MONGODB_NAME]["query_history"]
 
 
 async def process_file(file_path: str):
@@ -94,14 +96,17 @@ def vector_search(query: str, top_k: int = 3):
         },
         {
             "$project": {
-                "_id": 0,
+                "_id": 1,
                 "doc_id": 1,
                 "title": 1,
                 "content": 1,
-                "score": {"$meta": "vectorSearchScore"},
-            }
-        },
+                "summary": 1,
+                "tags": 1,
+                "score": { "$meta": "vectorSearchScore" }
+        }
+        }
     ]
+
 
     try:
         results = list(sync_collection.aggregate(pipeline))
@@ -112,3 +117,15 @@ def vector_search(query: str, top_k: int = 3):
     top_results = deduplicate_by_title(results, top_k)
     logger.debug(f"Vector search results: {top_results}")
     return top_results
+
+def save_query_history(query, titles=None, tags=None):
+    doc = {
+        "query": query,
+        "titles": titles or [],
+        "tags": tags or [],
+        "timestamp": datetime.utcnow(),
+    }
+    try:
+        query_history_collection.insert_one(doc)
+    except Exception as e:
+        logger.error(f"Save failed: {e}")

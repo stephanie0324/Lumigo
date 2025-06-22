@@ -21,7 +21,7 @@ IMAGE_NAME=$(bash script/get-image-name.sh)
 docker run \
     --name ${COMPOSE_PROJECT_NAME}\
     -p ${HOST_PORT}:7860 \
-    -v ${PRJ_DIR}/app:/app \
+    -v ${PRJ_DIR}/src:/src \
     --rm \
     -it \
     --entrypoint bash \

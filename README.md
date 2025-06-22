@@ -109,7 +109,7 @@ It leverages:
 1. Clone the repository:
 
    ```bash
-   git clone git@gitlab.com:sc310542-group/Lumigo.git
+   git clone https://github.com/stephanie0324/Lumigo.git
    cd Lumigo
    ```
 
@@ -141,12 +141,12 @@ It leverages:
 
    # for development
    bash script/run-dev-mode.sh
-   streamlit run app.py --server.port=7860
+   streamlit run main.py --server.port=7860
    ```
 
    > [! Note]
    > Prod Mode (docker compose): the credential.json should be in the `deploy/` folder
-   > Dev Mode: the credential file under `app/` folder
+   > Dev Mode: the credential file under `src/` folder
 
 ---
 

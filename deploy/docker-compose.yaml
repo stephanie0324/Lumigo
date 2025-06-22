@@ -1,9 +1,9 @@
 version: "3.8"
 
 services:
-  knowbot:
+  lumigo:
     container_name: ${COMPOSE_PROJECT_NAME}
-    image: "stephC/knowbot:${VERSION}"
+    image: "stephC/lumigo:${VERSION}"
     ports:
       - "${HOST_PORT}:7860"
     environment:
@@ -15,10 +15,10 @@ services:
       DEVICE: "${DEVICE}"
       PROJECT_ID: "${PROJECT_ID}"
       LOCATION: "${LOCATION}"
-      GOOGLE_APPLICATION_CREDENTIALS: "/app/credentials.json"
+      GOOGLE_srcLICATION_CREDENTIALS: "/src/credentials.json"
 
     volumes:
-      - ./credentials.json:/app/credentials.json:ro
+      - ./credentials.json:/src/credentials.json:ro
 
     stdin_open: true
     tty: true

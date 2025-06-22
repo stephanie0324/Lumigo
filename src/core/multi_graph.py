@@ -61,7 +61,6 @@ def agent_expand(state: GraphState) -> Command:
     expanded = llm.invoke([HumanMessage(content=prompt)]).content.strip()
 
     lines = [line.strip() for line in expanded.split("\n") if line.strip()]
-    logs["agent_expand"].append("Generated expanded queries:")
     logs["agent_expand"].extend(lines)
 
     return Command(
@@ -93,18 +92,18 @@ def agent_retrieve(state: GraphState) -> Command:
         all_docs.extend(docs)
     logs["agent_retrieve"].append(f"Retrieved {len(all_docs)} documents total.")
 
+    # Perform vector search for each query and collect results
     # Deduplicate docs
     unique_docs_dict = {}
     for doc in all_docs:
-        key = doc["content"][:100]
-        unique_docs_dict.setdefault(key, doc)
+        unique_docs_dict.setdefault(doc["_id"], doc)
     unique_docs = list(unique_docs_dict.values())
 
     if not unique_docs:
         top_docs = []
         logs["agent_retrieve"].append("No documents found after retrieval and deduplication.")
     else:
-        formatted_docs = "\n\n".join([f"[{i+1}] {doc['content']}" for i, doc in enumerate(unique_docs)])
+        formatted_docs = "\n\n".join([f"[{i+1}] {doc['summary']}" for i, doc in enumerate(unique_docs)])
         prompt = RERANK_PROMPT.format(query=state["messages"][0].content, formatted_docs=formatted_docs)
         response = llm.invoke([HumanMessage(content=prompt)]).content.strip()
 

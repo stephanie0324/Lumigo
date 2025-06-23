@@ -98,9 +98,18 @@ It leverages:
 
 > 🎉 　 Lumigo is born on May 21, 2025
 
-- 2025/06/15 Add in **Multi-Agent** worflow for better search and query expand experience
-- 2025/06/05 Add in Vertex AI as our model inference
-- 2025/05/27 Lumigo added pdf reader, fooenote and reference for better search
+## 🆕 Recent Updates
+
+- **2025/06/22** – `Chat History` is now available!
+- **2025/06/15** – Added **Multi-Agent** workflow for better search and query expansion
+- **2025/06/05** – Integrated **Vertex AI** as our model inference backend
+
+<details>
+  <summary>📜 Timeline (older updates)</summary>
+
+- **2025/05/27** – Added PDF reader, footnotes, and reference support for better search
+
+</details>
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

@@ -23,7 +23,6 @@ from core.config import settings
 from logger import logger
 from .embedding_utils import get_text_embedding
 from .data_utils import load_and_process_pdf_async, load_and_process_json_async
-from .scihub_utils import search_by_keyword
 
 
 sync_collection = MongoClient(settings.MONGODB_URI)[settings.MONGODB_NAME][settings.COLLECTION]
@@ -310,6 +309,60 @@ def get_total_query_count(start_date=None, end_date=None):
     except Exception as e:
         logger.error(f"Failed to get total query count: {e}")
         return 0
+    
+def get_tag_trend_data(top_k=10, start_date=None, end_date=None) -> list[dict]:
+    """Return daily usage counts of top_k tags (for line chart visualization)."""
+    try:
+        match_stage = {}
+        if start_date:
+            match_stage["$gte"] = datetime.combine(start_date, datetime.min.time())
+        if end_date:
+            match_stage["$lte"] = datetime.combine(end_date, datetime.max.time())
+
+        match_query = {"timestamp": match_stage} if match_stage else {}
+
+        # First get top_k tags by total counts within date range
+        top_tags_pipeline = [
+            {"$match": match_query},
+            {"$unwind": "$tags"},
+            {"$group": {"_id": "$tags", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}},
+            {"$limit": top_k},
+            {"$project": {"tag": "$_id", "_id": 0}}
+        ]
+        top_tags_docs = list(query_history_collection.aggregate(top_tags_pipeline))
+        top_tags = [doc["tag"] for doc in top_tags_docs]
+
+        # Then aggregate daily counts only for those top tags
+        pipeline = [
+            {"$match": match_query},
+            {"$unwind": "$tags"},
+            {"$match": {"tags": {"$in": top_tags}}},
+            {
+                "$group": {
+                    "_id": {
+                        "date": {"$dateToString": {"format": "%Y-%m-%d", "date": "$timestamp"}},
+                        "tag": "$tags"
+                    },
+                    "count": {"$sum": 1}
+                }
+            },
+            {"$sort": {"_id.date": 1}},
+            {
+                "$project": {
+                    "_id": 0,
+                    "date": "$_id.date",
+                    "tag": "$_id.tag",
+                    "count": 1
+                }
+            }
+        ]
+
+        return list(query_history_collection.aggregate(pipeline))
+
+    except Exception as e:
+        logger.error(f"Failed to get tag trend data: {e}")
+        return []
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ from core.config import settings
 
 st.set_page_config(page_title=settings.DEMO_WEB_PAGE_TITLE, page_icon="🤖", layout="wide")
 
-page = st.sidebar.selectbox("Choose a page", ["Lumigo", "How to Use", "What's New"])
+page = st.sidebar.selectbox("Choose a page", ["Lumigo", "What's New", "How to Use"])
 
 if page == "Lumigo":
     st.title(settings.DEMO_WEB_PAGE_TITLE) 

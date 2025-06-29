@@ -1,6 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import asyncio
+from datetime import datetime
 
 from core.backend import (
     init_state, submit_query, trigger_question,
@@ -164,7 +165,6 @@ def render_answer_area(graph):
 
 
 def render_reference_docs():
-    st.markdown("### 📄 Docs")
     with st.expander("📚 Reference Documents", expanded=True):
         if st.session_state.reference_docs:
             for idx, doc in enumerate(st.session_state.reference_docs):
@@ -200,16 +200,44 @@ def render_related_docs():
                     preview = content[:500] + "..." if len(content) > 500 else content
                     st.write(preview)
 
+def render_ans_snippet():
+    
+    def generate_note_markdown(question, answer, references: list[dict]) -> str:
+        note = f"# Question\n{question}\n\n"
+        note += f"## Answer\n{answer}\n\n"
+        note += "## References\n"
+        for ref in references:
+            note += f"- **Title:** \"{ref['title']}\"\n"
+            note += f"  - Section: {ref.get('section', 'N/A')}\n"
+            note += f"  - Chunk: {ref['text'][:200]}...\n\n"
+        note += f"## Date\n{datetime.today().date()}\n"
+        return note
+    
+    if "answer" in st.session_state and "query" in st.session_state and "reference_docs" in st.session_state:
+            question = st.session_state.query
+            answer = st.session_state.answer
+            selected_refs = st.session_state.reference_docs
+
+            md_string = generate_note_markdown(question, answer, selected_refs)
+            with st.expander("📝 View Notes Summary"):
+                st.code(md_string, language='markdown')
+                st.download_button("📥 Download as .md", data=md_string, file_name="note.md", mime="text/markdown")
+
+    
+
 
 def main_content():
     init_state_with_history() 
     render_sidebar()
+
     main_col, preview_col = st.columns([2, 1])
     with main_col:
         render_input_area()
         graph = get_graph()
         render_answer_area(graph)
+
     with preview_col:
+        render_ans_snippet()
         render_reference_docs()
         render_related_docs()
 

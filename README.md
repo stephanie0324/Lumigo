@@ -20,10 +20,8 @@
     </a>
 </p>
 <div align="center">
-
-  <p>This is a chatbot built with Retrieval-Augmented Generation (RAG) for in-depth semantic search across research papers and theses.</p>
-
-  <p>Ask freely — Lumigo will return grounded answers with trusted reference documents.</p>
+  
+  <p>Ask your question — Lumigo not only retrieves relevant, trusted documents, but also automatically expands its academic database when no matching content is found.</p>
 
   <p>
     🌐 <a href="https://lumigo-service-flkbnf43xq-uc.a.run.app" target="_blank"><strong>Live Demo</strong></a>
@@ -50,6 +48,13 @@
 >  Built with Streamlit, LangChain, MongoDB, and Google Vertex AI.
 
 **Lumigo** is an intelligent academic research assistant powered by Retrieval-Augmented Generation (RAG). Designed for precision and explainability, it helps users **search**, **explore**, and **question academic documents** with context awareness.
+
+<div align="center">
+  <p class="image-cropper">
+    <img src="lumigo-framework.png" alt="Lumigo Framework" width="300"/>
+  </p>
+  <em>Lumigo Framework</em>
+</div>
 
 Unlike generic RAG systems, **Lumigo** supports **document-specific queries**, generates **follow-up questions**, and provides **transparent source attribution** for all responses. It also features a **Thesis Fallback Retrieval Module** that automatically searches and incorporates **open-access academic theses** when internal documents are insufficient, enriching the knowledge base dynamically. Leveraging **MongoDB**, **HuggingFace Embeddings**, and **Vertex AI**, it delivers semantically grounded insights through a clean, interactive UI.
 

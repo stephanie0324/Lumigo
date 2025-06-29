@@ -69,7 +69,7 @@ It leverages:
 
 <div align="center">
   <p class="image-cropper">
-    <img src="Lumigo.gif" alt="Lumigo Interface" width="600"/>
+    <img src="Lumigo-2.gif" alt="Lumigo Interface" width="600"/>
   </p>
   <em>Lumigo Interface</em>
 </div>

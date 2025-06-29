@@ -1,4 +1,5 @@
 import re
+import asyncio
 from typing import Literal, TypedDict, List
 from langgraph.graph import StateGraph, END
 from langgraph.types import Command
@@ -6,8 +7,8 @@ from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, System
 
 
 from logger import logger
-from utils.embedding_utils import get_text_embedding, cosine_sim, format_docs_for_prompt
-from utils.db_utils import vector_search
+from utils.embedding_utils import format_docs_for_prompt
+from utils.db_utils import vector_search, append_new_thesis
 from .prompt import MODE_DECIDE_PROMPT, DECIDE_PROMPT, EXPAND_PROMPT, REFERENCE_PROMPT, RERANK_PROMPT
 from .model import llm
 
@@ -76,48 +77,69 @@ def agent_retrieve(state: GraphState) -> Command:
     state["trace"].append("agent_retrieve")
     logs = state.setdefault("logs", {})
     logs["agent_retrieve"] = []
+    state.setdefault("queries", [])
 
-    if state["reference_docs"]:
+    # Use reference_docs if provided
+    if state.get("reference_docs"):
         state["related_docs"] = state["reference_docs"]
-        logs["agent_retrieve"].append(f"Agent Using Referenced Docs")
-        return Command(goto="agent_cite", update={"related_docs": state["related_docs"], "trace": state["trace"], "logs": state["logs"]})
+        logs["agent_retrieve"].append("Using provided reference documents.")
+        return Command(goto="agent_cite", update=state)
 
     expanded_text = state["messages"][-1].content
-    expanded_queries = [line.strip() for line in expanded_text.split('\n') if line.strip()]
+    expanded_queries = [line.strip() for line in expanded_text.split("\n") if line.strip()]
+    state["queries"].extend(expanded_queries)
 
-    all_docs = []
-    for eq in expanded_queries:
-        state["queries"].append(eq)
-        docs = vector_search(eq) or []
-        all_docs.extend(docs)
-    logs["agent_retrieve"].append(f"Retrieved {len(all_docs)} documents total.")
+    def search_and_dedup(queries: list[str]) -> list[dict]:
+        logger.info("[Search] Starting vector search...")
+        all_docs = []
+        for q in queries:
+            docs = vector_search(q) or []
+            all_docs.extend(docs)
+        logs["agent_retrieve"].append(f"Retrieved {len(all_docs)} documents total.")
+        unique = {doc["_id"]: doc for doc in all_docs}
+        logger.info(f"[Search] {len(unique)} unique documents after dedup.")
+        return list(unique.values())
 
-    # Perform vector search for each query and collect results
-    # Deduplicate docs
-    unique_docs_dict = {}
-    for doc in all_docs:
-        unique_docs_dict.setdefault(doc["_id"], doc)
-    unique_docs = list(unique_docs_dict.values())
+    # Step 1: Internal vector search
+    internal_docs = search_and_dedup(expanded_queries)
 
-    if not unique_docs:
-        top_docs = []
-        logs["agent_retrieve"].append("No documents found after retrieval and deduplication.")
-    else:
-        formatted_docs = "\n\n".join([f"[{i+1}] {doc['summary']}" for i, doc in enumerate(unique_docs)])
-        prompt = RERANK_PROMPT.format(query=state["messages"][0].content, formatted_docs=formatted_docs)
-        response = llm.invoke([HumanMessage(content=prompt)]).content.strip()
+    # Step 2: Fallback to Thesis search if no internal docs found
+    if not internal_docs:
+        logs["agent_retrieve"].append("No documents found. Falling back to thesis search...")
 
-        import re
-        indices = [int(i) for i in re.findall(r"\d+", response) if 1 <= int(i) <= len(unique_docs)]
-        top_docs = [unique_docs[i - 1] for i in indices[:5]]
-        logs["agent_retrieve"].append(f"Selected top {len(top_docs)} documents based on rerank.")
+        async def fetch_and_store_all():
+            await asyncio.gather(*(append_new_thesis(k, max_results=5) for k in expanded_queries))
 
-        if not top_docs:
-            top_docs = [unique_docs[0]]
-            logs["agent_retrieve"].append("No rerank match found, fallback to first document.")
+        try:
+            asyncio.run(fetch_and_store_all())
+            logs["agent_retrieve"].append("Thesis fetch completed.")
+        except Exception as e:
+            logger.error(f"[Fallback] Failed to append new thesis: {e}")
+            logs["agent_retrieve"].append("Thesis fetch failed.")
+
+        # Retry internal search after fallback
+        internal_docs = search_and_dedup(expanded_queries)
+
+    if not internal_docs:
+        logs["agent_retrieve"].append("Still no documents found after fallback.")
+        state["related_docs"] = []
+        return Command(goto="agent_cite", update=state)
+
+    # Step 3: Rerank
+    formatted = "\n\n".join(f"[{i+1}] {doc['summary']}" for i, doc in enumerate(internal_docs))
+    prompt = RERANK_PROMPT.format(query=state["messages"][0].content, formatted_docs=formatted)
+    response = llm.invoke([HumanMessage(content=prompt)]).content.strip()
+
+    indices = [int(i) for i in re.findall(r"\d+", response) if 1 <= int(i) <= len(internal_docs)]
+    top_docs = [internal_docs[i - 1] for i in indices[:5]] if indices else [internal_docs[0]]
+
+    logs["agent_retrieve"].append(
+        f"Selected {len(top_docs)} documents based on rerank." if indices else "Fallback to first document."
+    )
 
     state["related_docs"] = top_docs
-    return Command(goto="agent_cite", update={"related_docs": state["related_docs"], "trace": state["trace"], "logs": state["logs"]})
+    return Command(goto="agent_cite", update=state)
+
 
 def agent_cite(state: GraphState) -> Command:
     state["trace"].append("agent_cite")

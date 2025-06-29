@@ -14,15 +14,15 @@ def chunk_pdf_text(file_path: str) -> list[str]:
     full_text = ""
     for page in doc:
         full_text += page.get_text()
-    chunks = [full_text[i:i+1000] for i in range(0, len(full_text), 1000)]
+    chunks = [full_text[i:i+2000] for i in range(0, len(full_text), 2000)]
     return chunks
 
 
 async def load_and_process_pdf_async(file_path: str) -> list[dict]:
     chunks = chunk_pdf_text(file_path)
-    summary = await get_summary_async(" ".join(chunks))
 
     async def process_chunk(chunk: str) -> DocumentModel:
+        summary = await get_summary_async(chunk)
         tags = await get_tags_async(chunk)
         return DocumentModel(
             title=os.path.basename(file_path),
@@ -33,7 +33,7 @@ async def load_and_process_pdf_async(file_path: str) -> list[dict]:
         )
 
     docs = await asyncio.gather(*(process_chunk(chunk) for chunk in chunks))
-    return [doc.dict() for doc in docs]  # dict 化供 DB insert
+    return [doc.dict() for doc in docs]
 
 
 async def load_and_process_json_async(file_path: str) -> list[dict]:
@@ -54,4 +54,4 @@ async def load_and_process_json_async(file_path: str) -> list[dict]:
         )
 
     docs = await asyncio.gather(*(process_pub(pub) for pub in publications))
-    return [doc.dict() for doc in docs]  # dict 化供 DB insert
+    return [doc.dict() for doc in docs] 

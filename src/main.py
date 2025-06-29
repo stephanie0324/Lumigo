@@ -1,18 +1,17 @@
 import streamlit as st
-from ui.home import init_state, main_content
+from ui.home import main_content
 from ui.instruction import instruction_page
+from ui.analytics import analytics_page
 from core.config import settings
 
 st.set_page_config(page_title=settings.DEMO_WEB_PAGE_TITLE, page_icon="🤖", layout="wide")
 
-page = st.sidebar.selectbox("Choose a page", ["Lumigo", "How to Use"])
-
-def app_page():
-    init_state()
-    st.title(settings.DEMO_WEB_PAGE_TITLE) 
-    main_content()
+page = st.sidebar.selectbox("Choose a page", ["Lumigo", "How to Use", "What's New"])
 
 if page == "Lumigo":
-    app_page()
-else:
+    st.title(settings.DEMO_WEB_PAGE_TITLE) 
+    main_content()
+elif page == "How to Use":
     instruction_page()
+elif page == "What's New":
+    analytics_page()

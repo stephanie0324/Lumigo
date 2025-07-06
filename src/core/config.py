@@ -51,7 +51,6 @@ class Settings(BaseSettings):
         return v
 
     DEMO_WEB_PAGE_TITLE: str = "Lumigo (.◜◡◝)"
-    DEMO_WEB_TITLE: str = "Lumigo (.◜◡◝)"
     DEMO_WEB_DESCRIPTION: str = (
         """<ul><li>What would you like to search today?</li></<ul>"""
     )

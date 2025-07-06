@@ -104,21 +104,25 @@ def agent_retrieve(state: GraphState) -> Command:
     internal_docs = search_and_dedup(expanded_queries)
 
     # Step 2: Fallback to Thesis search if no internal docs found
-    if not internal_docs:
-        logs["agent_retrieve"].append("No documents found. Falling back to thesis search...")
+    if len(internal_docs) < 5:
+        logs["agent_retrieve"].append("Too few docs found. Falling back to thesis search...")
 
         async def fetch_and_store_all():
             await asyncio.gather(*(append_new_thesis(k, max_results=5) for k in expanded_queries))
 
         try:
-            asyncio.run(fetch_and_store_all())
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # In async context, spawn task
+                loop.create_task(fetch_and_store_all())
+            else:
+                asyncio.run(fetch_and_store_all())
+
             logs["agent_retrieve"].append("Thesis fetch completed.")
         except Exception as e:
             logger.error(f"[Fallback] Failed to append new thesis: {e}")
             logs["agent_retrieve"].append("Thesis fetch failed.")
 
-        # Retry internal search after fallback
-        internal_docs = search_and_dedup(expanded_queries)
 
     if not internal_docs:
         logs["agent_retrieve"].append("Still no documents found after fallback.")

@@ -185,7 +185,7 @@ async def append_new_thesis(keyword: str, max_results: int = 5):
         logger.info(f"[CleanUp] Removed temporary folder: {folder}")
 
 
-def vector_search(query: str, top_k: int = 3):
+def vector_search(query: str, top_k: int = 5):
     """Perform a synchronous vector similarity search using MongoDB $vectorSearch."""
     
     def deduplicate_by_title(docs, top_k: int):

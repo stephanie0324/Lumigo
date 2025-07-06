@@ -1,7 +1,11 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import asyncio
+import pandas as pd
+import random
 from datetime import datetime
+from collections import Counter
+
 
 from core.backend import (
     init_state, submit_query, trigger_question,
@@ -10,6 +14,7 @@ from core.backend import (
 )
 from core.multi_graph import build_initial_graph_state 
 from utils.db_utils import save_query_history
+
 
 def init_state_with_history():
     init_state()
@@ -47,7 +52,7 @@ def render_sidebar():
             with st.spinner("Updating database..."):
                 asyncio.run(async_update_db())
             st.success("Database update complete ✅")
-            st.experimental_rerun()
+            st.rerun()
 
 def render_title():
     st.markdown("""
@@ -100,7 +105,7 @@ def render_answer_area(graph):
         with col2:
             if st.button("🗑️ Clear", key="clear_history_btn"):
                 st.session_state.history.clear()
-                st.experimental_rerun()
+                st.rerun()
 
     if st.session_state.submitted and st.session_state.query:
         query = st.session_state.query
@@ -148,11 +153,6 @@ def render_answer_area(graph):
                 tags=list(set([tag for doc in st.session_state.related_docs for tag in doc.get("tags", [])]))
             )
             st.session_state.history.append((query, cleaned_answer))
-
-            st.markdown("""
-                <div style='background-color:#fffef4; padding: 1.2rem 1.5rem; border-left: 5px solid #ffe066;
-                            border-radius: 10px; margin-top: 1.5rem; box-shadow: 0 1px 6px rgba(0,0,0,0.03);'>
-            """, unsafe_allow_html=True)
             st.markdown(cleaned_answer, unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
 
@@ -175,7 +175,7 @@ def render_reference_docs():
                 with cols[1]:
                     if st.button("❌", key=f"remove_ref_{idx}"):
                         st.session_state.reference_docs.pop(idx)
-                        st.experimental_rerun()
+                        st.rerun()
         else:
             st.info("No reference documents selected.")
 
@@ -191,7 +191,7 @@ def render_related_docs():
                 if st.button("➕", key=f"add_ref_{idx}"):
                     if doc not in st.session_state.reference_docs:
                         st.session_state.reference_docs.append(doc)
-                        st.experimental_rerun()
+                        st.rerun()
             with cols[2]:
                 with st.expander(f"[{idx+1}] {doc.get('title', 'No Title')}"):
                     st.write("**Summary:**")
@@ -224,6 +224,27 @@ def render_ans_snippet():
             st.code(md_string, language='markdown')
             st.download_button("📥 Download as .md", data=md_string, file_name="note.md", mime="text/markdown")
 
+
+def render_simple_tag_cloud():
+    tags = [
+        tag for doc in st.session_state.related_docs
+        for tag in doc.get("tags", [])
+    ]
+    if not tags:
+        st.info("No tags to show.")
+        return
+
+    counter = Counter(tags)
+    html_tags = []
+    for tag, freq in counter.items():
+        size = 12 + freq * 4
+        color = f"hsl({random.randint(0, 360)}, 70%, 40%)"
+        html_tags.append(f"<span style='font-size:{size}px; color:{color}; margin-right:10px'>{tag}</span>")
+
+    st.markdown("#### ☁️ Tag Cloud")
+    st.markdown("<div style='line-height:2em'>" + " ".join(html_tags) + "</div>", unsafe_allow_html=True)
+
+
 def main_content():
     init_state_with_history()
     render_sidebar()
@@ -237,9 +258,9 @@ def main_content():
         render_answer_area(graph)
 
     with preview_col:
-        render_ans_snippet()
+        render_simple_tag_cloud()
         render_reference_docs()
         render_related_docs()
-
+        
 if __name__ == "__main__":
     main_content()

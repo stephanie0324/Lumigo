@@ -1,16 +1,13 @@
 import re
 import asyncio
-from typing import Literal, TypedDict, List
+from typing import Literal, TypedDict, List, Dict, Any, Optional
 from langgraph.graph import StateGraph, END
 from langgraph.types import Command
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 
-
-from logger import logger
-from utils.embedding_utils import format_docs_for_prompt
-from utils.db_utils import vector_search, append_new_thesis
 from .prompt import MODE_DECIDE_PROMPT, DECIDE_PROMPT, EXPAND_PROMPT, REFERENCE_PROMPT, RERANK_PROMPT
 from .model import llm
+from .agent_tools import AgentToolRegistry
 
 MAX_ITERATIONS = 3
 
@@ -28,15 +25,12 @@ class GraphState(TypedDict):
     draft: str
     final_answer: str
 
-# ===== Agent Nodes =====
 def agent_start(state: GraphState) -> Command[Literal["agent_expand", "agent_retrieve"]]:
     state["trace"].append("agent_start")
-
     logs = state.setdefault("logs", {})
     logs.setdefault("agent_start", [])
 
     prompt = MODE_DECIDE_PROMPT.format(question=state["messages"][0].content)
-
     decision = llm.invoke([HumanMessage(content=prompt)]).content.strip().lower()
     logs["agent_start"].append(f"LLM decision: {decision}")
 
@@ -50,8 +44,6 @@ def agent_start(state: GraphState) -> Command[Literal["agent_expand", "agent_ret
             "logs": logs
         }
     )
-
-
 
 def agent_expand(state: GraphState) -> Command:
     state["trace"].append("agent_expand")
@@ -79,7 +71,8 @@ def agent_retrieve(state: GraphState) -> Command:
     logs["agent_retrieve"] = []
     state.setdefault("queries", [])
 
-    # Use reference_docs if provided
+    tool_registry = AgentToolRegistry()
+
     if state.get("reference_docs"):
         state["related_docs"] = state["reference_docs"]
         logs["agent_retrieve"].append("Using provided reference documents.")
@@ -89,74 +82,59 @@ def agent_retrieve(state: GraphState) -> Command:
     expanded_queries = [line.strip() for line in expanded_text.split("\n") if line.strip()]
     state["queries"].extend(expanded_queries)
 
-    def search_and_dedup(queries: list[str]) -> list[dict]:
-        logger.info("[Search] Starting vector search...")
-        all_docs = []
-        for q in queries:
-            docs = vector_search(q) or []
-            all_docs.extend(docs)
-        logs["agent_retrieve"].append(f"Retrieved {len(all_docs)} documents total.")
-        unique = {doc["_id"]: doc for doc in all_docs}
-        logger.info(f"[Search] {len(unique)} unique documents after dedup.")
-        return list(unique.values())
+    vector_search_tool = tool_registry.get_tool("vector_search")
+    internal_docs = vector_search_tool.run({
+        "queries": expanded_queries,
+        "max_results_per_query": 10,
+        "deduplicate": True
+    })
 
-    # Step 1: Internal vector search
-    internal_docs = search_and_dedup(expanded_queries)
+    logs["agent_retrieve"].append(f"Vector search returned {len(internal_docs)} documents.")
 
-    # Step 2: Fallback to Thesis search if no internal docs found
     if len(internal_docs) < 5:
-        logs["agent_retrieve"].append("Too few docs found. Falling back to thesis search...")
-
-        async def fetch_and_store_all():
-            await asyncio.gather(*(append_new_thesis(k, max_results=5) for k in expanded_queries))
-
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # In async context, spawn task
-                loop.create_task(fetch_and_store_all())
-            else:
-                asyncio.run(fetch_and_store_all())
-
-            logs["agent_retrieve"].append("Thesis fetch completed.")
-        except Exception as e:
-            logger.error(f"[Fallback] Failed to append new thesis: {e}")
-            logs["agent_retrieve"].append("Thesis fetch failed.")
-
+        logs["agent_retrieve"].append("Too few docs found. Using thesis search fallback...")
+        thesis_search_tool = tool_registry.get_tool("thesis_search")
+        thesis_result = thesis_search_tool.run({
+            "queries": expanded_queries,
+            "max_results": 5
+        })
+        logs["agent_retrieve"].append(f"Thesis search status: {thesis_result.get('status', 'unknown')}")
+        internal_docs = vector_search_tool.run({
+            "queries": expanded_queries,
+            "max_results_per_query": 10,
+            "deduplicate": True
+        })
 
     if not internal_docs:
-        logs["agent_retrieve"].append("Still no documents found after fallback.")
+        logs["agent_retrieve"].append("No documents found after all searches.")
         state["related_docs"] = []
         return Command(goto="agent_cite", update=state)
 
-    # Step 3: Rerank
-    formatted = "\n\n".join(f"[{i+1}] {doc['summary']}" for i, doc in enumerate(internal_docs))
-    prompt = RERANK_PROMPT.format(query=state["messages"][0].content, formatted_docs=formatted)
-    response = llm.invoke([HumanMessage(content=prompt)]).content.strip()
+    rerank_tool = tool_registry.get_tool("document_rerank")
+    top_docs = rerank_tool.run({
+        "query": state["messages"][0].content,
+        "documents": internal_docs,
+        "top_k": 5
+    })
 
-    indices = [int(i) for i in re.findall(r"\d+", response) if 1 <= int(i) <= len(internal_docs)]
-    top_docs = [internal_docs[i - 1] for i in indices[:5]] if indices else [internal_docs[0]]
-
-    logs["agent_retrieve"].append(
-        f"Selected {len(top_docs)} documents based on rerank." if indices else "Fallback to first document."
-    )
-
+    logs["agent_retrieve"].append(f"Reranking selected {len(top_docs)} documents.")
     state["related_docs"] = top_docs
     return Command(goto="agent_cite", update=state)
-
 
 def agent_cite(state: GraphState) -> Command:
     state["trace"].append("agent_cite")
     logs = state.setdefault("logs", {})
     logs.setdefault("agent_cite", [])
 
-    formatted = format_docs_for_prompt(state["related_docs"])
-    messages = [SystemMessage(content=REFERENCE_PROMPT),
-                HumanMessage(content=f"Reference:\n{formatted}\n\nQuestion: {state['queries'][-1]}")]
-
-    cited_answer = llm.invoke(messages).content
+    tool_registry = AgentToolRegistry()
+    answer_tool = tool_registry.get_tool("answer_generation")
+    cited_answer = answer_tool.run({
+        "query": state["queries"][-1] if state["queries"] else state["messages"][0].content,
+        "reference_docs": state["related_docs"]
+    })
 
     state["answers"].append(cited_answer)
+    logs["agent_cite"].append(f"Generated cited answer with {len(state['related_docs'])} references.")
 
     return Command(goto="agent_synthesis", update={
         "answers": state["answers"],
@@ -182,25 +160,25 @@ def agent_decide(state: GraphState) -> Command:
     logs = state.setdefault("logs", {})
     logs.setdefault("agent_decide", [])
 
-    if state["iteration"] >= MAX_ITERATIONS:
-        logs["agent_decide"].append("Max iterations reached, ending.")
-        return Command(goto=END, update={"trace": state["trace"], "logs": logs})
+    tool_registry = AgentToolRegistry()
+    decision_tool = tool_registry.get_tool("decision_maker")
+    decision_result = decision_tool.run({
+        "answer": state["final_answer"],
+        "iteration": state["iteration"],
+        "max_iterations": MAX_ITERATIONS
+    })
 
-    prompt = DECIDE_PROMPT.format(last_reply=state["final_answer"])
-    decision = llm.invoke([HumanMessage(content=prompt)]).content.strip().upper()
-
-    next_iter = state["iteration"] + 1
-
+    logs["agent_decide"].append(f"Decision: {decision_result}")
     update_dict = {"trace": state["trace"], "logs": logs}
-    if "YES" in decision:
-        update_dict["iteration"] = next_iter
-    logs["agent_decide"].append(f"Need expand for better reasoning: {decision}")
-    return Command(
-        goto="agent_expand" if "YES" in decision else END,
-        update=update_dict
-    )
 
-# ===== Graph Construction =====
+    if decision_result["continue"]:
+        update_dict["iteration"] = state["iteration"] + 1
+        next_node = "agent_expand"
+    else:
+        next_node = END
+
+    return Command(goto=next_node, update=update_dict)
+
 def create_graph() -> StateGraph:
     graph = StateGraph(GraphState)
     graph.add_node("agent_start", agent_start)
@@ -213,7 +191,6 @@ def create_graph() -> StateGraph:
     graph.set_finish_point("agent_decide")
     return graph.compile()
 
-# ===== Initial State Builder =====
 def build_initial_graph_state(query: str) -> GraphState:
     return {
         "messages": [HumanMessage(content=query)],
@@ -226,9 +203,6 @@ def build_initial_graph_state(query: str) -> GraphState:
         "related_docs": [],
     }
 
-
-
-# ===== Main Execution =====
 if __name__ == "__main__":
     query = "What are the latest advancements in AI?"
     state = build_initial_graph_state(query)
@@ -238,8 +212,6 @@ if __name__ == "__main__":
 
     print("--- Final State ---")
     print("Trace:", final_state["trace"])
-    print("Answers:", final_state["answers"])
+    print("Final Answer:", final_state.get("final_answer", "No answer generated"))
     print("Iterations:", final_state["iteration"])
-    print("Queries:", final_state["queries"])
-    print("Related Docs:", final_state["related_docs"])
-    print("Similarities:", final_state["similarities"])
+    print("Related Docs Count:", len(final_state.get("related_docs", [])))

@@ -175,3 +175,5 @@ cython_debug/
 dev/*
 builds/*
 data/*
+# Environment variables
+deploy/.env

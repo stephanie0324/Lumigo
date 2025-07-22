@@ -1,11 +1,11 @@
 import re
 import asyncio
 from typing import Literal, TypedDict, List, Dict, Any, Optional
-from langgraph.graph import StateGraph, END
-from langgraph.types import Command
+from langgraph.graph import StateGraph, END, START
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 
-from .prompt import MODE_DECIDE_PROMPT, DECIDE_PROMPT, EXPAND_PROMPT, REFERENCE_PROMPT, RERANK_PROMPT
+# Assuming these prompts are defined correctly for the new agent roles
+from .prompt import MODE_DECIDE_PROMPT, EXPAND_PROMPT, REFERENCE_PROMPT, RERANK_PROMPT
 from .model import llm
 from .agent_tools import AgentToolRegistry
 
@@ -13,152 +13,115 @@ MAX_ITERATIONS = 3
 
 class GraphState(TypedDict):
     logs: dict[str, list[str]]
-    messages: List[BaseMessage]
     iteration: int
     trace: List[str]
     reference_docs: List[dict]
-    answers: List[str]
     queries: List[str]
     similarities: List[float]
     mode: Literal["explore", "direct"]
-    related_docs: List[dict]
-    draft: str
+    retrieved_docs: List[dict]
     final_answer: str
+    original_question: str
 
-def agent_start(state: GraphState) -> Command[Literal["agent_expand", "agent_retrieve"]]:
-    state["trace"].append("agent_start")
+def decide_mode(state: GraphState) -> dict:
+    """
+    Agent: Decides whether to go into "explore" mode for query expansion or "direct" mode for retrieval.
+    """
+    state["trace"].append("decide_mode")
     logs = state.setdefault("logs", {})
-    logs.setdefault("agent_start", [])
+    logs.setdefault("decide_mode", [])
 
-    prompt = MODE_DECIDE_PROMPT.format(question=state["messages"][0].content)
+    prompt = MODE_DECIDE_PROMPT.format(question=state["original_question"])
     decision = llm.invoke([HumanMessage(content=prompt)]).content.strip().lower()
-    logs["agent_start"].append(f"LLM decision: {decision}")
+    logs["decide_mode"].append(f"LLM decision: {decision}")
 
-    next_node = "agent_expand" if decision == "explore" else "agent_retrieve"
+    return {"mode": decision}
 
-    return Command(
-        goto=next_node,
-        update={
-            "trace": state["trace"],
-            "mode": decision,
-            "logs": logs
-        }
-    )
+def route_after_decision(state: GraphState) -> Literal["expand_query", "retrieve_documents"]:
+    """Router function to direct flow after mode decision."""
+    if state["mode"] == "explore":
+        return "expand_query"
+    return "retrieve_documents"
 
-def agent_expand(state: GraphState) -> Command:
-    state["trace"].append("agent_expand")
+def expand_query(state: GraphState) -> dict:
+    """
+    Agent: Expands the original query into multiple related queries for broader search.
+    """
+    state["trace"].append("expand_query")
     logs = state.setdefault("logs", {})
-    logs["agent_expand"] = []
+    logs["expand_query"] = []
 
-    prompt = EXPAND_PROMPT.format(original_question=state["messages"][0].content)
-    expanded = llm.invoke([HumanMessage(content=prompt)]).content.strip()
+    prompt = EXPAND_PROMPT.format(original_question=state["original_question"])
+    expanded_content = llm.invoke([HumanMessage(content=prompt)]).content.strip()
 
-    lines = [line.strip() for line in expanded.split("\n") if line.strip()]
-    logs["agent_expand"].extend(lines)
+    expanded_queries = [line.strip() for line in expanded_content.split("\n") if line.strip()]
+    logs["expand_query"].extend(expanded_queries)
 
-    return Command(
-        goto="agent_retrieve",
-        update={
-            "messages": [AIMessage(content=expanded)],
-            "trace": state["trace"],
-            "logs": logs
-        }
-    )
+    return {"queries": expanded_queries}
 
-def agent_retrieve(state: GraphState) -> Command:
-    state["trace"].append("agent_retrieve")
+def retrieve_documents(state: GraphState) -> dict:
+    """
+    Agent: Retrieves and reranks documents based on the queries.
+    """
+    state["trace"].append("retrieve_documents")
     logs = state.setdefault("logs", {})
-    logs["agent_retrieve"] = []
-    state.setdefault("queries", [])
+    logs["retrieve_documents"] = []
 
     tool_registry = AgentToolRegistry()
 
     if state.get("reference_docs"):
-        state["related_docs"] = state["reference_docs"]
-        logs["agent_retrieve"].append("Using provided reference documents.")
-        return Command(goto="agent_cite", update=state)
+        logs["retrieve_documents"].append("Using provided reference documents.")
+        return {"retrieved_docs": state["reference_docs"]}
 
-    expanded_text = state["messages"][-1].content
-    expanded_queries = [line.strip() for line in expanded_text.split("\n") if line.strip()]
-    state["queries"].extend(expanded_queries)
+    # If queries aren't expanded, use the original question.
+    queries_to_search = state.get("queries") or [state["original_question"]]
 
-    vector_search_tool = tool_registry.get_tool("vector_search")
-    internal_docs = vector_search_tool.run({
-        "queries": expanded_queries,
+    faiss_search_tool = tool_registry.get_tool("faiss_search")
+    internal_docs = faiss_search_tool.run({
+        "queries": queries_to_search,
         "max_results_per_query": 10,
-        "deduplicate": True
     })
 
-    logs["agent_retrieve"].append(f"Vector search returned {len(internal_docs)} documents.")
-
-    if len(internal_docs) < 5:
-        logs["agent_retrieve"].append("Too few docs found. Using thesis search fallback...")
-        thesis_search_tool = tool_registry.get_tool("thesis_search")
-        thesis_result = thesis_search_tool.run({
-            "queries": expanded_queries,
-            "max_results": 5
-        })
-        logs["agent_retrieve"].append(f"Thesis search status: {thesis_result.get('status', 'unknown')}")
-        internal_docs = vector_search_tool.run({
-            "queries": expanded_queries,
-            "max_results_per_query": 10,
-            "deduplicate": True
-        })
-
     if not internal_docs:
-        logs["agent_retrieve"].append("No documents found after all searches.")
-        state["related_docs"] = []
-        return Command(goto="agent_cite", update=state)
+        logs["retrieve_documents"].append("No documents found after all searches.")
+        return {"retrieved_docs": []}
 
     rerank_tool = tool_registry.get_tool("document_rerank")
     top_docs = rerank_tool.run({
-        "query": state["messages"][0].content,
+        "query": state["original_question"],
         "documents": internal_docs,
         "top_k": 5
     })
 
-    logs["agent_retrieve"].append(f"Reranking selected {len(top_docs)} documents.")
-    state["related_docs"] = top_docs
-    return Command(goto="agent_cite", update=state)
+    logs["retrieve_documents"].append(f"Reranking selected {len(top_docs)} documents.")
+    return {"retrieved_docs": top_docs}
 
-def agent_cite(state: GraphState) -> Command:
-    state["trace"].append("agent_cite")
+def generate_answer(state: GraphState) -> dict:
+    """
+    Agent: Generates a final answer based on the retrieved documents and the original question.
+    """
+    state["trace"].append("generate_answer")
     logs = state.setdefault("logs", {})
-    logs.setdefault("agent_cite", [])
+    logs.setdefault("generate_answer", [])
 
     tool_registry = AgentToolRegistry()
     answer_tool = tool_registry.get_tool("answer_generation")
     cited_answer = answer_tool.run({
-        "query": state["queries"][-1] if state["queries"] else state["messages"][0].content,
-        "reference_docs": state["related_docs"]
+        "query": state["original_question"],
+        "reference_docs": state["retrieved_docs"]
     })
 
-    state["answers"].append(cited_answer)
-    logs["agent_cite"].append(f"Generated cited answer with {len(state['related_docs'])} references.")
+    logs["generate_answer"].append(f"Generated cited answer with {len(state['retrieved_docs'])} references.")
 
-    return Command(goto="agent_synthesis", update={
-        "answers": state["answers"],
-        "trace": state["trace"],
-        "logs": logs
-    })
+    return {"final_answer": cited_answer}
 
-def agent_synthesis(state: GraphState) -> Command:
-    state["trace"].append("agent_synthesis")
+def decide_next_step(state: GraphState) -> Literal["expand_query", "END"]:
+    """
+    Agent: Decides whether to continue iterating for a better answer or to finish.
+    """
+    state["trace"].append("decide_next_step")
     logs = state.setdefault("logs", {})
-    logs.setdefault("agent_synthesis", [])
-
-    final_answer = state["answers"][-1]
-
-    return Command(goto="agent_decide", update={
-        "final_answer": final_answer,
-        "trace": state["trace"],
-        "logs": logs
-    })
-
-def agent_decide(state: GraphState) -> Command:
-    state["trace"].append("agent_decide")
-    logs = state.setdefault("logs", {})
-    logs.setdefault("agent_decide", [])
+    logs.setdefault("decide_next_step", [])
 
     tool_registry = AgentToolRegistry()
     decision_tool = tool_registry.get_tool("decision_maker")
@@ -168,39 +131,47 @@ def agent_decide(state: GraphState) -> Command:
         "max_iterations": MAX_ITERATIONS
     })
 
-    logs["agent_decide"].append(f"Decision: {decision_result}")
-    update_dict = {"trace": state["trace"], "logs": logs}
+    logs["decide_next_step"].append(f"Decision: {decision_result}")
 
     if decision_result["continue"]:
-        update_dict["iteration"] = state["iteration"] + 1
-        next_node = "agent_expand"
-    else:
-        next_node = END
+        print(f"--- Iteration {state['iteration'] + 1}: Refining answer ---")
+        return "expand_query"
+    
+    return END
 
-    return Command(goto=next_node, update=update_dict)
 
 def create_graph() -> StateGraph:
     graph = StateGraph(GraphState)
-    graph.add_node("agent_start", agent_start)
-    graph.add_node("agent_expand", agent_expand)
-    graph.add_node("agent_retrieve", agent_retrieve)
-    graph.add_node("agent_cite", agent_cite)
-    graph.add_node("agent_synthesis", agent_synthesis)
-    graph.add_node("agent_decide", agent_decide)
-    graph.set_entry_point("agent_start")
-    graph.set_finish_point("agent_decide")
+    
+    graph.add_node("decide_mode", decide_mode)
+    graph.add_node("expand_query", expand_query)
+    graph.add_node("retrieve_documents", retrieve_documents)
+    graph.add_node("generate_answer", generate_answer)
+
+    graph.add_edge("expand_query", "retrieve_documents")
+    graph.add_edge("retrieve_documents", "generate_answer")
+    
+    graph.add_conditional_edges(
+        "decide_mode",
+        route_after_decision,
+        {"expand_query": "expand_query", "retrieve_documents": "retrieve_documents"}
+    )
+    graph.add_conditional_edges("generate_answer", decide_next_step, {"expand_query": "expand_query", END: END})
+    
+    graph.add_edge(START, "decide_mode")
     return graph.compile()
 
 def build_initial_graph_state(query: str) -> GraphState:
     return {
-        "messages": [HumanMessage(content=query)],
+        "original_question": query,
         "iteration": 0,
         "trace": [],
         "reference_docs": [],
-        "answers": [],
         "queries": [],
+        "final_answer": "",
         "similarities": [],
-        "related_docs": [],
+        "retrieved_docs": [],
+        "logs": {},
     }
 
 if __name__ == "__main__":
@@ -214,4 +185,4 @@ if __name__ == "__main__":
     print("Trace:", final_state["trace"])
     print("Final Answer:", final_state.get("final_answer", "No answer generated"))
     print("Iterations:", final_state["iteration"])
-    print("Related Docs Count:", len(final_state.get("related_docs", [])))
+    print("Retrieved Docs Count:", len(final_state.get("retrieved_docs", [])))

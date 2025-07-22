@@ -1,23 +1,15 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import asyncio
-import pandas as pd
 import random
 from datetime import datetime
 from collections import Counter
 
 
-from core.backend import (
-    init_state, submit_query, trigger_question,
-    extract_used_doc_indices, split_answer_followups,
-    extract_followups, get_graph, async_update_db
-)
-from core.multi_graph import build_initial_graph_state 
-from utils.db_utils import save_query_history
+from core.multi_graph import build_initial_graph_state, create_graph
+from core.backend import trigger_question, extract_used_doc_indices, split_answer_followups, extract_followups, trigger_build_index
 
 
 def init_state_with_history():
-    init_state()
     if "history" not in st.session_state:
         st.session_state.history = []
     if "submitted" not in st.session_state:
@@ -28,8 +20,6 @@ def init_state_with_history():
         st.session_state.answer = ""
     if "reference_docs" not in st.session_state:
         st.session_state.reference_docs = []
-    if "related_docs" not in st.session_state:
-        st.session_state.related_docs = []
     if "used_indices" not in st.session_state:
         st.session_state.used_indices = []
     if "selected_doc_idx" not in st.session_state:
@@ -46,13 +36,10 @@ def render_sidebar():
         "4. Ask using references"
     )
 
-    with st.sidebar.expander("🛠️ Developer Tools (WIP)"):
-        st.markdown("*The following feature is under development.*")
-        if st.button("🔄 Update Vector DB"):
-            with st.spinner("Updating database..."):
-                asyncio.run(async_update_db())
-            st.success("Database update complete ✅")
-            st.rerun()
+    with st.sidebar.expander("🛠️ Developer Tools"):
+        st.markdown("Update the vector index if you have changed the source documents.")
+        if st.button("Build FAISS Index"):
+            trigger_build_index()
 
 def render_title():
     st.markdown("""
@@ -115,23 +102,21 @@ def render_answer_area(graph):
         initial_state["reference_docs"] = st.session_state.reference_docs
         initial_state["queries"] = [query]
 
-        final_answer = ""
+        final_state = {}
         timeline_container = st.empty()
 
         with st.spinner("Running agent..."):
-            for step_output in graph.stream(initial_state, config={"streaming": True}):
-                for step_name, state in step_output.items():
-                    if step_name == "agent_retrieve":
-                        st.session_state.related_docs = state.get("related_docs", [])
-                    if step_name == "agent_synthesis":
-                        final_answer = state.get("final_answer", "")
+            # Simplified invocation
+            final_state = graph.invoke(initial_state)
 
         timeline_container.empty()
         st.success("✅ Agent execution complete!")
 
-        if final_answer:
+        if final_state and final_state.get("final_answer"):
+            final_answer = final_state["final_answer"]
             trimmed, followup = split_answer_followups(final_answer)
             st.session_state.answer = trimmed
+            st.session_state.retrieved_docs = final_state.get("retrieved_docs", [])
             st.session_state.used_indices = list(extract_used_doc_indices(trimmed))
 
             def clean_answer(text):
@@ -147,11 +132,6 @@ def render_answer_area(graph):
                 ).strip()
 
             cleaned_answer = clean_answer(trimmed)
-            save_query_history(
-                query,
-                titles=[doc.get("title", "No Title") for doc in st.session_state.related_docs],
-                tags=list(set([tag for doc in st.session_state.related_docs for tag in doc.get("tags", [])]))
-            )
             st.session_state.history.append((query, cleaned_answer))
             st.markdown(cleaned_answer, unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
@@ -161,31 +141,32 @@ def render_answer_area(graph):
                 st.markdown("#### 💡 Follow-up Questions")
                 for i, q in enumerate(followups):
                     st.button(q, key=f"followup_{i}", on_click=trigger_question, args=(q,))
-        else:
+        elif final_state:
             st.warning("⚠️ No meaningful output from the agent.")
 
 def render_reference_docs():
     with st.expander("📚 Reference Documents", expanded=True):
         if st.session_state.reference_docs:
-            for idx, doc in enumerate(st.session_state.reference_docs):
+            for i, doc in enumerate(st.session_state.reference_docs):
                 cols = st.columns([9, 1])
                 with cols[0]:
-                    if st.button(doc.get("title", f"Document {idx+1}"), key=f"ref_doc_{idx}"):
-                        st.session_state.selected_doc_idx = idx
+                    if st.button(doc.get("metadata", {}).get("source", f"Document {i+1}"), key=f"ref_doc_{i}"):
+                        st.session_state.selected_doc_idx = i
                 with cols[1]:
-                    if st.button("❌", key=f"remove_ref_{idx}"):
-                        st.session_state.reference_docs.pop(idx)
+                    if st.button("❌", key=f"remove_ref_{i}"):
+                        st.session_state.reference_docs.pop(i)
                         st.rerun()
         else:
             st.info("No reference documents selected.")
 
 def render_related_docs():
-    if st.session_state.related_docs:
+    # This should now be driven by the final state of the graph after execution
+    if st.session_state.get("retrieved_docs") and st.session_state.get("used_indices"):
         st.markdown("#### 🔍 Source Documents")
         for idx in st.session_state.used_indices:
-            if idx >= len(st.session_state.related_docs):
+            if idx >= len(st.session_state.get("retrieved_docs", [])):
                 continue
-            doc = st.session_state.related_docs[idx]
+            doc = st.session_state["retrieved_docs"][idx]
             cols = st.columns([1, 1, 10])
             with cols[0]:
                 if st.button("➕", key=f"add_ref_{idx}"):
@@ -193,11 +174,11 @@ def render_related_docs():
                         st.session_state.reference_docs.append(doc)
                         st.rerun()
             with cols[2]:
-                with st.expander(f"[{idx+1}] {doc.get('title', 'No Title')}"):
+                source_title = doc.get("metadata", {}).get("source", "Unknown Source")
+                with st.expander(f"[{idx+1}] {source_title}"):
                     st.write("**Summary:**")
-                    content = doc.get("content", "")
-                    preview = content[:500] + "..." if len(content) > 500 else content
-                    st.write(preview)
+                    summary = doc.get("metadata", {}).get("summary", "No summary available.")
+                    st.write(summary)
 
 def render_ans_snippet():
     def generate_note_markdown(question, answer, references: list[dict]) -> str:
@@ -205,9 +186,9 @@ def render_ans_snippet():
         note += f"## Answer\n{answer}\n\n"
         note += "## References\n"
         for ref in references:
-            note += f"- **Title:** \"{ref.get('title', 'No Title')}\"\n"
-            note += f"  - Section: {ref.get('section', 'N/A')}\n"
-            content = ref.get("content", "")
+            note += f"- **Title:** \"{ref.get('metadata', {}).get('source', 'No Title')}\"\n"
+            note += f"  - Summary: {ref.get('metadata', {}).get('summary', 'N/A')}\n"
+            content = ref.get("page_content", "")
             preview = content[:200] + "..." if len(content) > 200 else content
             note += f"  - Chunk: {preview}\n\n"
         note += f"## Date\n{datetime.today().date()}\n"
@@ -227,8 +208,8 @@ def render_ans_snippet():
 
 def render_simple_tag_cloud():
     tags = [
-        tag for doc in st.session_state.related_docs
-        for tag in doc.get("tags", [])
+        tag for doc in st.session_state.get("retrieved_docs", [])
+        for tag in doc.get("metadata", {}).get("tags", [])
     ]
     if not tags:
         st.info("No tags to show.")
@@ -254,7 +235,7 @@ def main_content():
     main_col, preview_col = st.columns([2, 1])
     with main_col:
         render_input_area()
-        graph = get_graph()
+        graph = create_graph()
         render_answer_area(graph)
 
     with preview_col:

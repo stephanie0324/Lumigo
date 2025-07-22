@@ -45,27 +45,27 @@
 # About the project
 
 > 🔍 Tech Stack  
->  Built with Streamlit, LangChain, MongoDB, and Google Vertex AI.
+>  Built with Streamlit, LangChain, FAISS, and Google Vertex AI.
 
 **Lumigo** is an intelligent academic research assistant powered by Retrieval-Augmented Generation (RAG). Designed for precision and explainability, it helps users **search**, **explore**, and **question academic documents** with context awareness.
 
 <div align="center">
   <p class="image-cropper">
-    <img src="lumigo-framework.png" alt="Lumigo Framework" width="300"/>
+    <img src="./img/lumigo-framework.png" alt="Lumigo Framework" width="300"/>
   </p>
   <em>Lumigo Framework</em>
 </div>
 
 Unlike generic RAG systems, **Lumigo** supports **document-specific queries**, generates **follow-up questions**, and provides **transparent source attribution** for all responses. It also features a **Thesis Fallback Retrieval Module** that automatically searches and incorporates **open-access academic theses** when internal documents are insufficient, enriching the knowledge base dynamically. Leveraging **MongoDB**, **HuggingFace Embeddings**, and **Vertex AI**, it delivers semantically grounded insights through a clean, interactive UI.
 
-Lumigo is ideal for researchers, students, and professionals navigating complex literature with a focus on rigor and clarity.
+Lumigo is ideal for researchers, students, and professionals navigating complex literature with a focus on rigor and clarity. It uses a local FAISS index for efficient, self-contained vector search.
 
 It leverages:
 
-🗃️ MongoDB for document storage and vector search  
+🗃️ FAISS for local, high-speed vector search  
 🌐 HuggingFace Embeddings for semantic search  
-🤖 Vertex AI for LLM-based summarization and QA  
-🚀 GitLab for CI/CD, automates testing and deployment.
+🤖 Vertex AI for LLM-based summarization and QA
+🚀 Docker for containerized deployment.
 
 <div align="center">
   <p class="image-cropper">
@@ -87,12 +87,12 @@ It leverages:
 - **Metadata Tagging Module**: Enriches each text chunk with relevant metadata, including document title, section headers, file source, and author details, enabling precise context retrieval and transparent source attribution.
 - **Summarization Module**: Utilizes Vertex AI large language models to generate concise summaries for each chunk, improving document preview capabilities and supporting efficient user exploration.
 - **Embedding and Indexing Module**: Employs HuggingFace embedding models to convert each chunk into dense semantic vectors. These embeddings, alongside metadata, are stored in MongoDB Atlas configured with vector search indexes. This supports rapid similarity queries that drive Lumigo’s semantic search.
+- **Embedding and Indexing Module**: Employs HuggingFace embedding models to convert each chunk into dense semantic vectors. These embeddings and metadata are stored locally in a **FAISS index**, enabling rapid, self-contained similarity searches.
 - **Retrieval-Augmented Generation (RAG) Module**: Combines retrieved document chunks with large language models to generate contextually grounded, explainable answers. Users can interactively select which reference documents to include, ensuring transparency and control over the sources informing responses.
 - **Thesis Auto-Retrieval Fallback**: When internal search returns no results, Lumigo automatically fetches related research papers using CrossRef and Open Access Button APIs. It downloads PDF files, extracts and summarizes their content using Vertex AI, and stores them in the vector database — fully autonomously.
   - 📄 Each PDF is saved with a **sanitized title** for traceability.
   - 🗂️ Downloaded files are saved in a **temporary, isolated subfolder** per request to avoid conflicts under async execution.
   - 🧹 After ingestion, all files are automatically deleted from disk.
-- **Analytics Dashboard**: A new page that displays the most frequently searched topics and documents, providing insights into research trends, with interactive filters.
 
 <p align="center">
 <img src="./img/model_structure_explain.gif" alt="drawing" width="400" height="200"/>
@@ -111,14 +111,11 @@ It leverages:
 
 - **2025/06/29** – Added fallback module for automatic academic document retrieval via **CrossRef + Open Access API**. When no related documents are found in the internal DB, Lumigo now searches, downloads, summarizes, and appends up to 5 papers directly into the vector DB.
 - **2025/06/24** – `Analytics Dashboard` is now available with interactive filters for top queries and documents!
-- **2025/06/22** – `Chat History` is now available.
 
 <details>
   <summary>📜 Timeline (older updates)</summary>
 
 - **2025/06/15** – Added **Multi-Agent** workflow for better search and query expansion.
-- **2025/06/05** – Integrated **Vertex AI** as our model inference backend.
-- **2025/05/27** – Added PDF reader, footnotes, and reference support for better search.
 
 </details>
 
@@ -143,10 +140,6 @@ It leverages:
 
    - The `.env` file is under `deploy/` folder
    - Fill in the required keys:
-     - `MONGODB_URI`
-     - `MONGODB_NAME`
-     - `COLLECTION`
-     - `INDEX_NAME`
      - `OPENAI_API_KEY`
      - `VERTEX_PROJECT_ID`
      - `VERTEX_LOCATION`

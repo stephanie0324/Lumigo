@@ -1,58 +1,57 @@
-# syntax=docker/dockerfile:1
-FROM python:3.11.12-slim-bullseye AS builder
+# syntax=docker/dockerfile:1.4
+FROM python:3.11-slim AS builder
 
-# 安裝系統依賴
-RUN apt-get update && apt-get install -y \
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1-mesa-dev \
     libmagic-dev \
     ghostscript \
     poppler-utils \
     tesseract-ocr \
-    libreoffice \
-    ca-certificates \
     build-essential \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# 升級 pip 和 setuptools
+# Upgrade pip & setuptools
 RUN pip install --upgrade pip setuptools wheel
 
-# 複製 requirements.txt 並快取安裝
+# Copy requirements and pre-build wheels with cache
 COPY ./src/install/requirements.txt /tmp/requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip wheel --wheel-dir=/wheels --prefer-binary --timeout 60 --retries 3 -r /tmp/requirements.txt
 
-# 預先下載所有 whl 依賴
-RUN pip wheel --wheel-dir=/wheels -r /tmp/requirements.txt
 
+# ------------ Runtime Image ------------
+FROM python:3.11-slim
 
-# ---------- 正式執行階段 ----------
-FROM python:3.11.12-slim-bullseye
-
-# 安裝系統依賴
-RUN apt-get update && apt-get install -y \
+# Install runtime system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1-mesa-dev \
     libmagic-dev \
     ghostscript \
     poppler-utils \
     tesseract-ocr \
-    libreoffice \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# 升級 pip
+# Upgrade pip
 RUN pip install --upgrade pip
 
-# 複製 whl 快取並安裝
+# Copy pre-built wheels and install dependencies
 COPY --from=builder /wheels /wheels
 COPY ./src/install/requirements.txt /tmp/requirements.txt
-RUN pip install --no-index --find-links=/wheels -r /tmp/requirements.txt
+RUN pip install --no-index --find-links=/wheels --no-cache-dir -r /tmp/requirements.txt
 
-# 建立工作資料夾
+# Set working directory and copy source code
 WORKDIR /src
-COPY --chmod=777 /src /src
+COPY --chmod=755 /src /src
 
-# 建立暫存資料夾
+# Create temp/cache dirs with write permissions
 RUN mkdir -p /.cache /.paddleocr /tmp && chmod -R 777 /.cache /.paddleocr /tmp
 
+# Set port for Streamlit
 EXPOSE 7860
 
+# Entrypoint for Streamlit app
 ENTRYPOINT ["streamlit"]
 CMD ["run", "main.py", "--server.port", "7860"]

@@ -18,8 +18,9 @@ def get_text_embedding(text: str) -> list[float]:
     Returns:
         list[float]: Embedding vector.
     """
-    
-    return embedding_model.get_embeddings(text)
+    # The embedding model expects a list of texts.
+    embeddings = embedding_model.get_embeddings([text])
+    return embeddings[0] if embeddings else []
 
 def cosine_sim(a: List[float], b: List[float]) -> float:
     """Calculate cosine similarity between two vectors."""
@@ -29,7 +30,6 @@ def cosine_sim(a: List[float], b: List[float]) -> float:
 
 def format_docs_for_prompt(docs):
     return "\n".join(
-    f"[Doc: {i+1}] Title: {doc.get('title', 'No Title')}\nContent:\n{doc.get('content', 'No content.')}\n\n---"
+    f"[Doc: {i+1}] Title: {doc.get('metadata', {}).get('source', 'No Title')}\nContent:\n{doc.get('page_content', 'No content.')}\n\n---"
     for i, doc in enumerate(docs)
 )
-

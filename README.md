@@ -105,7 +105,6 @@ It leverages:
 
 - **2025/07/22** – Migrated vector storage from MongoDB to a local **FAISS index**, simplifying setup and removing external database dependencies.
 - **2025/07/22** – Added a **"Build FAISS Index"** button to the UI, allowing users to re-index their source documents on-demand without restarting the application.
-- **2025/07/22** – Removed analytics and chat history features to streamline the application's focus on core RAG capabilities.
 
 <details>
   <summary>📜 Timeline (older updates)</summary>
@@ -144,10 +143,10 @@ It leverages:
    - The `.env` file is under `deploy/` folder
    - Fill in the required keys:
      - `OPENAI_API_KEY`
-     - `VERTEX_PROJECT_ID`
-     - `VERTEX_LOCATION`
-     - `VERTEX_MODEL_NAME`
+     - `PROJECT_ID` (for Google Cloud)
+     - `LOCATION` (for Google Cloud)
      - `GOOGLE_APPLICATION_CREDENTIALS` (credential filepath)
+     - `HOST_PORT` (optional, defaults to a standard port)
 
 5. Launch the app:
 

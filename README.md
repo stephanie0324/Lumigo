@@ -47,18 +47,16 @@
 > 🔍 Tech Stack  
 >  Built with Streamlit, LangChain, FAISS, and Google Vertex AI.
 
-**Lumigo** is an intelligent academic research assistant powered by Retrieval-Augmented Generation (RAG). Designed for precision and explainability, it helps users **search**, **explore**, and **question academic documents** with context awareness.
+**Lumigo** is an intelligent academic research assistant powered by Retrieval-Augmented Generation (RAG). Designed for precision and explainability, it helps users **search**, **explore**, and **question academic documents** with context-awareness.
 
 <div align="center">
   <p class="image-cropper">
-    <img src="./img/lumigo-framework.png" alt="Lumigo Framework" width="300"/>
+    <img src="lumigo-framework.png" alt="Lumigo Framework" width="300"/>
   </p>
   <em>Lumigo Framework</em>
 </div>
 
-Unlike generic RAG systems, **Lumigo** supports **document-specific queries**, generates **follow-up questions**, and provides **transparent source attribution** for all responses. It also features a **Thesis Fallback Retrieval Module** that automatically searches and incorporates **open-access academic theses** when internal documents are insufficient, enriching the knowledge base dynamically. Leveraging **MongoDB**, **HuggingFace Embeddings**, and **Vertex AI**, it delivers semantically grounded insights through a clean, interactive UI.
-
-Lumigo is ideal for researchers, students, and professionals navigating complex literature with a focus on rigor and clarity. It uses a local FAISS index for efficient, self-contained vector search.
+Unlike generic RAG systems, **Lumigo** supports **document-specific queries**, generates **follow-up questions**, and provides **transparent source attribution** for all responses. It uses a local FAISS index for efficient, self-contained vector search, making it ideal for researchers, students, and professionals navigating complex literature with a focus on rigor and clarity.
 
 It leverages:
 
@@ -86,13 +84,9 @@ It leverages:
 - **Document Ingestion Module**: Supports loading academic documents in JSON and PDF formats. Upon ingestion, documents undergo chunking based on fixed character counts to create manageable text segments.
 - **Metadata Tagging Module**: Enriches each text chunk with relevant metadata, including document title, section headers, file source, and author details, enabling precise context retrieval and transparent source attribution.
 - **Summarization Module**: Utilizes Vertex AI large language models to generate concise summaries for each chunk, improving document preview capabilities and supporting efficient user exploration.
-- **Embedding and Indexing Module**: Employs HuggingFace embedding models to convert each chunk into dense semantic vectors. These embeddings, alongside metadata, are stored in MongoDB Atlas configured with vector search indexes. This supports rapid similarity queries that drive Lumigo’s semantic search.
 - **Embedding and Indexing Module**: Employs HuggingFace embedding models to convert each chunk into dense semantic vectors. These embeddings and metadata are stored locally in a **FAISS index**, enabling rapid, self-contained similarity searches.
+- **On-Demand Index Building**: A "Build FAISS Index" button in the UI allows for easy, on-the-fly updates to the vector store whenever source documents are changed.
 - **Retrieval-Augmented Generation (RAG) Module**: Combines retrieved document chunks with large language models to generate contextually grounded, explainable answers. Users can interactively select which reference documents to include, ensuring transparency and control over the sources informing responses.
-- **Thesis Auto-Retrieval Fallback**: When internal search returns no results, Lumigo automatically fetches related research papers using CrossRef and Open Access Button APIs. It downloads PDF files, extracts and summarizes their content using Vertex AI, and stores them in the vector database — fully autonomously.
-  - 📄 Each PDF is saved with a **sanitized title** for traceability.
-  - 🗂️ Downloaded files are saved in a **temporary, isolated subfolder** per request to avoid conflicts under async execution.
-  - 🧹 After ingestion, all files are automatically deleted from disk.
 
 <p align="center">
 <img src="./img/model_structure_explain.gif" alt="drawing" width="400" height="200"/>
@@ -105,12 +99,13 @@ It leverages:
 
 # New Updates
 
-> 🎉 　 Lumigo is born on May 21, 2025
+> 🎉 Lumigo is born on May 21, 2025
 
 ## 🆕 Recent Updates
 
-- **2025/06/29** – Added fallback module for automatic academic document retrieval via **CrossRef + Open Access API**. When no related documents are found in the internal DB, Lumigo now searches, downloads, summarizes, and appends up to 5 papers directly into the vector DB.
-- **2025/06/24** – `Analytics Dashboard` is now available with interactive filters for top queries and documents!
+- **2025/07/22** – Migrated vector storage from MongoDB to a local **FAISS index**, simplifying setup and removing external database dependencies.
+- **2025/07/22** – Added a **"Build FAISS Index"** button to the UI, allowing users to re-index their source documents on-demand without restarting the application.
+- **2025/07/22** – Removed analytics and chat history features to streamline the application's focus on core RAG capabilities.
 
 <details>
   <summary>📜 Timeline (older updates)</summary>
@@ -136,7 +131,15 @@ It leverages:
    bash script/build-docker-image.sh
    ```
 
-3. Set up your `.env` file:
+3. Build the FAISS Index:
+
+   Before running the application for the first time, you must generate the vector index from your source documents. You can do this via the UI or the command line.
+
+   ```bash
+   python src/core/build_faiss_index.py
+   ```
+
+4. Set up your `.env` file:
 
    - The `.env` file is under `deploy/` folder
    - Fill in the required keys:
@@ -146,7 +149,7 @@ It leverages:
      - `VERTEX_MODEL_NAME`
      - `GOOGLE_APPLICATION_CREDENTIALS` (credential filepath)
 
-4. Launch the app:
+5. Launch the app:
 
    ```bash
    cd deploy
@@ -166,18 +169,18 @@ It leverages:
 ## 🛠️ How to Use
 
 1. **Search for academic content**  
-   Enter your question in the search panel. The system performs semantic search over ingested JSON/PDF documents.
+   Enter your question in the search panel. The system performs a semantic search over the indexed documents.
 
 2. **Explore and select references**  
    Browse the retrieved documents and their AI-generated summaries. Choose relevant ones by clicking **"Add to Ref"**.
 
 3. **Ask your question**  
-   With references selected, ask a question. The system uses only those documents to generate accurate, grounded answers.
+   With references selected, ask a question. The system will use only those documents to generate an accurate, grounded answer.
 
 4. **View source and follow-ups**  
    Check the sources of the answer, and explore suggested follow-up questions to continue your research.
 
-> 💡 Tip: If your query returns no results from internal documents, Lumigo will automatically search for new open-access papers to fill the gap.
+> 💡 Tip: Use the "Build FAISS Index" button in the sidebar's "Developer Tools" section to re-index your documents after making changes to the `src/data` directory.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

@@ -49,7 +49,7 @@ async def load_and_process_json_async(file_path: str) -> list[dict]:
             title=pub.get("title", ""),
             content=content,
             summary=summary,
-            embedding=get_text_embedding(summary),
+            embedding=get_text_embedding(summary) or [],
             tags=tags
         )
 

@@ -7,20 +7,18 @@ langchain-text-splitters>=0.3.8,<1.0.0
 langgraph==0.4.5
 langserve[all]==0.0.46
 text_generation==0.7.0
-# transformers==4.41.2
-motor>=3.3.1
 openai==1.79.0
+faiss-cpu
+tiktoken
 # sentence-transformers==3.0.1
 streamlit==1.45.1
 streamlit-pills==0.3.0
 streamlit-image-select==0.6.0
 streamlit-option-menu==0.3.12
-streamlit-aggrid==1.0.2
 streamlit-code-editor==0.1.14
 pandas>=1.5.3,<3.0.0
 pydantic>=2.9, <3.0
 pydantic-settings>=2.4.0,<3.0.0
-pymongo==4.13.0
 pymupdf>=1.22.0
 httpx==0.28.0
 openpyxl==3.1.5

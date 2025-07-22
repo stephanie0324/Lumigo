@@ -2,6 +2,7 @@
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from langchain_google_vertexai import ChatVertexAI
+from typing import List
 from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 
 from google.cloud import aiplatform
@@ -31,13 +32,14 @@ class EmbeddingModelWrapper:
             self.use_vertexai = False
             self.model = HuggingFaceBgeEmbeddings(**settings.RAG_INDEX_HF_EMBEDDING_MODEL_CONFIG)
 
-    def get_embeddings(self, texts):
+    def get_embeddings(self, texts: List[str]) -> List[List[float]]:
         if self.use_vertexai:
-            response = self.model.get_embeddings([texts])
-            return response[0].values
+            # The Vertex AI model expects a list of strings.
+            response = self.model.get_embeddings(texts)
+            # The response is a list of TextEmbedding objects, so we extract the 'values' from each.
+            return [embedding.values for embedding in response]
         else:
+            # The HuggingFace model also expects a list of strings.
             return self.model.embed_documents(texts)
 
 embedding_model = EmbeddingModelWrapper()
-
-

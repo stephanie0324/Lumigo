@@ -1,15 +1,16 @@
 import re
-import asyncio
+import json
+import faiss
+import numpy as np
 from typing import Literal, TypedDict, List, Dict, Any, Optional
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
-
+from langchain_openai import OpenAIEmbeddings
 from logger import logger
-from utils.embedding_utils import format_docs_for_prompt
-from utils.db_utils import vector_search, append_new_thesis
-from .prompt import MODE_DECIDE_PROMPT, DECIDE_PROMPT, EXPAND_PROMPT, REFERENCE_PROMPT, RERANK_PROMPT
-from .model import llm
+from utils.embedding_utils import format_docs_for_prompt # Assuming this utility exists and is correct
+from .prompt import DECIDE_PROMPT, REFERENCE_PROMPT, RERANK_PROMPT
+from .model import llm, embedding_model
 
 MAX_ITERATIONS = 3
 
@@ -17,14 +18,9 @@ MAX_ITERATIONS = 3
 # Tool Input Schemas
 # =========================
 
-class VectorSearchInput(BaseModel):
+class FaissSearchInput(BaseModel):
     queries: List[str] = Field(description="List of search queries")
     max_results_per_query: int = Field(default=10, description="Maximum results per query")
-    deduplicate: bool = Field(default=True, description="Whether to deduplicate results")
-
-class ThesisSearchInput(BaseModel):
-    queries: List[str] = Field(description="List of search queries")
-    max_results: int = Field(default=5, description="Maximum results per query")
 
 class DocumentRerankInput(BaseModel):
     query: str = Field(description="Original query for relevance scoring")
@@ -46,64 +42,52 @@ class DecisionInput(BaseModel):
 # Tools
 # =========================
 
-class VectorSearchTool(BaseTool):
-    name: str = Field(default="vector_search")
-    description: str = Field(default="Search for relevant documents using vector similarity")
-    args_schema: type[BaseModel] = VectorSearchInput
+class FaissSearchTool(BaseTool):
+    name: str = Field(default="faiss_search")
+    description: str = Field(default="Search for relevant documents using a local FAISS index.")
+    args_schema: type[BaseModel] = FaissSearchInput
 
-    def _run(self, queries: List[str], max_results_per_query: int = 10, deduplicate: bool = True) -> List[Dict[str, Any]]:
-        logger.info(f"[VectorSearchTool] Searching for {len(queries)} queries")
+    index: Any = Field(default=None, exclude=True)
+    metadata: List[dict] = Field(default_factory=list, exclude=True)
+    embeddings: Any = Field(default=None, exclude=True)
 
-        all_docs = []
+    def __init__(self, index_path="storage/vector_index.faiss", metadata_path="storage/metadata.json", **kwargs):
+        super().__init__(**kwargs)
+        try:
+            self.index = faiss.read_index(index_path)
+            with open(metadata_path, 'r', encoding='utf-8') as f:
+                self.metadata = json.load(f)
+            self.embeddings = embedding_model
+            logger.info(f"FAISS index and metadata loaded successfully from {index_path}")
+        except Exception as e:
+            logger.error(f"Failed to load FAISS index or metadata: {e}")
+            # Handle initialization failure, maybe raise an error or set a flag
+            self.index = None
+
+    def _run(self, queries: List[str], max_results_per_query: int = 10) -> List[dict]:
+        if self.index is None:
+            logger.error("FAISS index is not available.")
+            return []
+
+        all_retrieved_docs = []
+        all_retrieved_indices = set()
+
         for query in queries:
-            docs = vector_search(query) or []
-            all_docs.extend(docs[:max_results_per_query])
-
-        if deduplicate:
-            unique_docs = {doc["_id"]: doc for doc in all_docs}
-            result = list(unique_docs.values())
-            logger.info(f"[VectorSearchTool] Found {len(result)} unique documents after dedup")
-        else:
-            result = all_docs
-
-        return result
-
-    async def _arun(self, queries: List[str], max_results_per_query: int = 10, deduplicate: bool = True) -> List[Dict[str, Any]]:
-        return self._run(queries, max_results_per_query, deduplicate)
-
-
-class ThesisSearchTool(BaseTool):
-    name: str = Field(default="thesis_search")
-    description: str = Field(default="Fetch and store thesis documents as fallback search")
-    args_schema: type[BaseModel] = ThesisSearchInput
-
-    def _run(self, queries: List[str], max_results: int = 5) -> Dict[str, Any]:
-        logger.info(f"[ThesisSearchTool] Fetching thesis documents for {len(queries)} queries")
-
-        async def fetch_all():
-            await asyncio.gather(*(append_new_thesis(q, max_results=max_results) for q in queries))
-            return {"status": "completed", "queries_processed": len(queries)}
-
-        try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                task = loop.create_task(fetch_all())
-                return {"status": "task_created", "queries_processed": len(queries)}
-            else:
-                result = asyncio.run(fetch_all())
-                return result
-        except Exception as e:
-            logger.error(f"[ThesisSearchTool] Failed: {e}")
-            return {"status": "failed", "error": str(e)}
-
-    async def _arun(self, queries: List[str], max_results: int = 5) -> Dict[str, Any]:
-        logger.info(f"[ThesisSearchTool] Async fetching thesis documents for {len(queries)} queries")
-        try:
-            await asyncio.gather(*(append_new_thesis(q, max_results=max_results) for q in queries))
-            return {"status": "completed", "queries_processed": len(queries)}
-        except Exception as e:
-            logger.error(f"[ThesisSearchTool] Async failed: {e}")
-            return {"status": "failed", "error": str(e)}
+            query_embedding = self.embeddings.get_embeddings([query])[0]
+            query_vector = np.array([query_embedding], dtype=np.float32)
+            
+            _distances, indices = self.index.search(query_vector, max_results_per_query)
+            
+            for doc_index in indices[0]:
+                if doc_index != -1 and doc_index not in all_retrieved_indices:
+                    all_retrieved_indices.add(doc_index)
+                    retrieved_doc = self.metadata[doc_index]
+                    # Ensure the entire document object is returned, not just content
+                    # The metadata already contains page_content and metadata keys.
+                    all_retrieved_docs.append(retrieved_doc) 
+        
+        logger.info(f"FAISS search found {len(all_retrieved_docs)} unique documents.")
+        return all_retrieved_docs
 
 
 class DocumentRerankTool(BaseTool):
@@ -116,7 +100,7 @@ class DocumentRerankTool(BaseTool):
         if not documents:
             return []
 
-        formatted = "\n\n".join(f"[{i+1}] {doc.get('summary', doc.get('content', '')[:200])}" for i, doc in enumerate(documents))
+        formatted = "\n\n".join(f"[{i+1}] {doc.get('summary', doc.get('page_content', '')[:200])}" for i, doc in enumerate(documents))
         prompt = RERANK_PROMPT.format(query=query, formatted_docs=formatted)
         response = llm.invoke([HumanMessage(content=prompt)]).content.strip()
 
@@ -199,8 +183,7 @@ class AgentToolRegistry:
 
     def _initialize_tools(self):
         tools = [
-            VectorSearchTool(),
-            ThesisSearchTool(),
+            FaissSearchTool(),
             DocumentRerankTool(),
             AnswerGenerationTool(),
             DecisionTool()
